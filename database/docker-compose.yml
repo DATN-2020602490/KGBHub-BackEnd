@@ -1,0 +1,19 @@
+services:
+  postgres:
+    container_name: postgres_container
+    image: postgres:bullseye
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-gwyn}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-gwyn_trader}
+      PGDATA: /data/postgres
+    volumes:
+      - ./postgres:/data/postgres
+    ports:
+      - 5432:5432
+    networks:
+      - databases
+    restart: unless-stopped
+
+networks:
+  databases:
+    name: databases

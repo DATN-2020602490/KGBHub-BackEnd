@@ -1,0 +1,744 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x", "linux-arm64-openssl-3.0.x", "linux-musl-arm64-openssl-3.0.x", "linux-musl", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String     @id @default(uuid())
+  email          String     @unique
+  username       String?
+  firstName      String?
+  lastName       String?
+  gender         String?
+  password       String?
+  salt           String?
+  roles          UserRole[]
+  phone          String?
+  address        String?
+  avatarFileId   String?
+  coverFileId    String?
+  birthday       DateTime?
+  verifyCode     String?
+  platform       Platform
+  refreshToken   String?
+  firstTime      Boolean    @default(true) // false if sent first time public profile email
+  isNewUser      Boolean    @default(true) // new user flag
+  syncWithGoogle Boolean    @default(false)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  comments Comment[]
+  hearts   Heart[]
+
+  lessons Lesson[]
+  courses Course[]
+
+  coursesPaid CoursesPaid[]
+  submitForms SubmitForm[]
+  rating      Rating[]
+  bookmarks   Bookmark[]
+  lessonDones LessonDone[]
+  courseDones CourseDone[]
+
+  lastReset DateTime?
+  cart      Cart[]
+
+  orders         Order[]        @relation(name: "Order")
+  referredOrders Order[]        @relation(name: "ReferredOrder")
+  chatMembers    ChatMember[]
+  attachments    Attachment[]
+  files          File[]
+  campaignUsers  CampaignUser[]
+}
+
+model Role {
+  id          String     @id @default(uuid())
+  name        RoleEnum   @unique
+  description String
+  userRole    UserRole[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+}
+
+enum RoleEnum {
+  USER
+  ADMIN
+  AUTHOR
+}
+
+enum Platform {
+  GOOGLE
+  LOCAL
+}
+
+enum LessonStatus {
+  UPLOADING
+  UPLOADED
+  UPLOADING_TO_YOUTUBE
+  PENDING
+  APPROVED
+}
+
+enum CourseStatus {
+  DRAFT
+  PENDING
+  APPROVED
+}
+
+model UserRole {
+  id        String    @id @default(uuid())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  role   Role   @relation(fields: [roleId], references: [id])
+  roleId String
+  user   User   @relation(fields: [userId], references: [id])
+  userId String
+}
+
+enum LessonType {
+  VIDEO
+  TEXT
+}
+
+model Lesson {
+  id        String    @id @default(uuid())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  lessonName   String
+  lessonNumber Int
+
+  lessonType LessonType @default(VIDEO)
+
+  trialAllowed  Boolean @default(false)
+  descriptionMD String?
+
+  videoFileId String?
+
+  thumbnailFileId String?
+
+  status LessonStatus
+
+  title   String?
+  content String?
+
+  user   User   @relation(fields: [userId], references: [id])
+  userId String
+
+  comments    Comment[]
+  hearts      Heart[]
+  bookmarks   Bookmark[]
+  part        Part         @relation(fields: [partId], references: [id])
+  partId      String
+  lessonDones LessonDone[]
+}
+
+enum Currency {
+  USD
+}
+
+enum CourseCategory {
+  DEVELOPMENT
+  BUSINESS
+  DESIGN
+  MARKETING
+  IT
+  PERSONAL_DEVELOPMENT
+  PHOTOGRAPHY
+  MUSIC
+  HEALTH
+  FITNESS
+  LIFESTYLE
+  TEACHING
+  ACADEMICS
+  LANGUAGE
+  OTHER
+}
+
+model Course {
+  id        String    @id @default(uuid())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  totalLesson     Int
+  totalPart       Int
+  courseName      String
+  totalDuration   Float
+  knowledgeGained String[]
+  isPublic        Boolean      @default(false)
+  status          CourseStatus @default(DRAFT)
+
+  avgRating   Float?
+  totalRating Int    @default(0)
+
+  thumbnailFileId String?
+
+  category CourseCategory
+
+  priceAmount Float    @default(0)
+  currency    Currency @default(USD)
+
+  descriptionMD String?
+
+  user   User   @relation(fields: [userId], references: [id])
+  userId String
+
+  hearts Heart[]
+  parts  Part[]
+
+  coursesPaid       CoursesPaid[]
+  rating            Rating[]
+  bookmarks         Bookmark[]
+  courseDones       CourseDone[]
+  coursesOnCarts    CoursesOnCarts[]
+  products          Product[]
+  conversations     Conversation[]
+  campaignDiscounts CampaignDiscount[]
+}
+
+model CoursesPaid {
+  id String @id @default(uuid())
+
+  course   Course @relation(fields: [courseId], references: [id])
+  courseId String
+  user     User   @relation(fields: [userId], references: [id])
+  userId   String
+
+  isFree Boolean @default(false)
+
+  order   Order?  @relation(fields: [orderId], references: [id])
+  orderId String?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+}
+
+model Cart {
+  id String @id @default(uuid())
+
+  user   User   @relation(fields: [userId], references: [id])
+  userId String
+
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  deletedAt      DateTime?
+  coursesOnCarts CoursesOnCarts[]
+}
+
+model CoursesOnCarts {
+  id String @id @default(uuid())
+
+  course   Course @relation(fields: [courseId], references: [id])
+  courseId String
+
+  addedAt DateTime @default(now())
+
+  cart   Cart   @relation(fields: [cartId], references: [id])
+  cartId String
+}
+
+model Part {
+  id          String  @id @default(uuid())
+  partNumber  Int
+  partName    String
+  description String?
+
+  lessons Lesson[]
+
+  course   Course @relation(fields: [courseId], references: [id])
+  courseId String
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+}
+
+model Comment {
+  id        String    @id @default(uuid())
+  content   String
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  lesson   Lesson? @relation(fields: [lessonId], references: [id])
+  lessonId String?
+
+  user   User   @relation(fields: [userId], references: [id])
+  userId String
+
+  level    Int       @default(0)
+  parentId String?
+  parent   Comment?  @relation("CommentToComment", fields: [parentId], references: [id])
+  children Comment[] @relation("CommentToComment")
+}
+
+model Heart {
+  id String @id @default(uuid())
+
+  user   User   @relation(fields: [userId], references: [id])
+  userId String
+
+  lesson    Lesson?  @relation(fields: [lessonId], references: [id])
+  lessonId  String?
+  course    Course?  @relation(fields: [courseId], references: [id])
+  courseId  String?
+  message   Message? @relation(fields: [messageId], references: [id])
+  messageId String?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+}
+
+enum FormStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model LessonDone {
+  id String @id @default(uuid())
+
+  lesson   Lesson @relation(fields: [lessonId], references: [id])
+  lessonId String
+  user     User   @relation(fields: [userId], references: [id])
+  userId   String
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+}
+
+model CourseDone {
+  id String @id @default(uuid())
+
+  course   Course @relation(fields: [courseId], references: [id])
+  courseId String
+  user     User   @relation(fields: [userId], references: [id])
+  userId   String
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+}
+
+model SubmitForm {
+  id        String    @id @default(uuid())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  user   User   @relation(fields: [userId], references: [id])
+  userId String
+
+  real_firstName String
+  real_lastName  String
+
+  selfieFileId      String?
+  frontIdCardFileId String?
+  backIdCardFileId  String?
+
+  linkCV String?
+
+  category CourseCategory @default(OTHER)
+
+  status FormStatus @default(PENDING)
+}
+
+model Rating {
+  id String @id @default(uuid())
+
+  user     User   @relation(fields: [userId], references: [id])
+  userId   String
+  course   Course @relation(fields: [courseId], references: [id])
+  courseId String
+
+  content String?
+
+  star Float @default(0)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+}
+
+model Bookmark {
+  id        String    @id @default(uuid())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  user   User   @relation(fields: [userId], references: [id])
+  userId String
+
+  lesson   Lesson? @relation(fields: [lessonId], references: [id])
+  lessonId String?
+  course   Course? @relation(fields: [courseId], references: [id])
+  courseId String?
+}
+
+enum OrderStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  EXPIRED
+}
+
+enum PaymentPlatform {
+  STRIPE
+}
+
+model ProductOrder {
+  id        String  @id @default(uuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+  quantity  Int     @default(1)
+  orderId   String
+  order     Order   @relation(fields: [orderId], references: [id])
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+}
+
+enum ProductStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum ProductType {
+  BEING_DONATED
+  COURSE
+  KGBHUB_SERVICE_TIP
+  STRIPE_SERVICE_FEE
+}
+
+model Product {
+  id          String        @id @default(uuid())
+  status      ProductStatus @default(ACTIVE)
+  type        ProductType
+  name        String
+  description String?
+  period      Int?
+  price       Float
+  currency    Currency      @default(USD)
+  images      String[]
+
+  course   Course? @relation(fields: [courseId], references: [id])
+  courseId String?
+
+  productStripeId String?
+  productOrders   ProductOrder[]
+
+  tags String[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+}
+
+model Order {
+  id            String         @id @default(uuid())
+  userId        String
+  user          User           @relation(name: "Order", fields: [userId], references: [id])
+  productOrders ProductOrder[]
+
+  status      OrderStatus
+  amount      Float
+  currency    Currency
+  checkoutUrl String?
+  vouchers    Voucher[]
+  platform    PaymentPlatform @default(STRIPE)
+
+  platformFee Float @default(0)
+
+  KGBHubServiceTip Float @default(0)
+
+  stripeCheckoutId     String?
+  stripePriceId        String?
+  stripeSubscriptionId String?
+
+  originalAmount Float @default(0)
+  originalFee Float @default(0)
+
+  coursesPaids CoursesPaid[]
+
+  expiresAt DateTime
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  referredBy   User?   @relation(name: "ReferredOrder", fields: [referredById], references: [id])
+  referredById String?
+}
+
+model Conversation {
+  id String @id @default(uuid())
+
+  messages Message[]
+
+  avatarFileId String?
+
+  roomId String @unique
+
+  conversationName String?
+
+  conversationType ConversationType
+
+  chatMembers ChatMember[]
+
+  course   Course? @relation(fields: [courseId], references: [id])
+  courseId String?
+
+  attachments Attachment[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+}
+
+model ChatMember {
+  id String @id @default(uuid())
+
+  user   User   @relation(fields: [userId], references: [id])
+  userId String
+
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  conversationId String
+
+  chatMemberRole        ChatMemberRole
+  chatMembersOnMessages ChatMembersOnMessages[]
+
+  isMute Boolean @default(false)
+
+  status MemberStatus @default(ACTIVE)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+}
+
+enum MemberStatus {
+  ACTIVE
+  PENDING
+  ARCHIVED
+  REMOVED
+}
+
+enum ChatMemberRole {
+  ADMIN
+  MEMBER
+}
+
+enum ConversationType {
+  CLOUD_SAVE
+  DM
+  COURSE_GROUP_CHAT
+  GROUP_CHAT
+}
+
+model Message {
+  id String @id @default(uuid())
+
+  content String
+
+  attachments Attachment[]
+
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  conversationId String
+
+  recalled Boolean @default(false)
+
+  targetMessageId String?
+
+  targetMessage Message?  @relation("MessageToMessage", fields: [targetMessageId], references: [id])
+  replyMessages Message[] @relation("MessageToMessage")
+
+  hearts Heart[]
+
+  chatMembersOnMessages ChatMembersOnMessages[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+}
+
+model ChatMembersOnMessages {
+  id           String     @id @default(uuid())
+  chatMember   ChatMember @relation(fields: [chatMemberId], references: [id])
+  chatMemberId String
+
+  message   Message @relation(fields: [messageId], references: [id])
+  messageId String
+
+  userView UserView @default(RECEIVER)
+
+  forceRead Boolean   @default(false)
+  read      Boolean   @default(false)
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+}
+
+enum UserView {
+  SENDER
+  RECEIVER
+}
+
+model File {
+  id String @id @default(uuid())
+
+  localPath    String?
+  filename     String?
+  duration     Float?
+  originalName String?
+  filesize     String
+  mimetype     String
+
+  lessonId String?
+
+  attachmentId String?
+
+  ownerId String
+  owner   User   @relation(fields: [ownerId], references: [id])
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+}
+
+model Attachment {
+  id String @id @default(uuid())
+
+  fileId String?
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id])
+
+  conversationId String?
+  conversation   Conversation? @relation(fields: [conversationId], references: [id])
+
+  message   Message? @relation(fields: [messageId], references: [id])
+  messageId String?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+}
+
+model Migrate {
+  name  String   @id
+  runAt DateTime @default(now())
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+}
+
+enum CampaignType {
+  VOUCHERS
+  DISCOUNT
+}
+
+model Campaign {
+  id String @id @default(uuid())
+
+  type        CampaignType
+  name        String
+  description String?
+  coverFileId String?
+  startAt     DateTime
+  endAt       DateTime
+  vouchers    Voucher[]
+
+  totalVoucher Int
+  totalUsed    Int
+
+  active Boolean @default(true)
+
+  campaignUsers     CampaignUser[]
+  campaignDiscounts CampaignDiscount[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+}
+
+model CampaignDiscount {
+  id String @id @default(uuid())
+
+  campaign   Campaign @relation(fields: [campaignId], references: [id])
+  campaignId String
+
+  discount Float
+
+  courseId String
+  course   Course @relation(fields: [courseId], references: [id])
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+}
+
+model CampaignUser {
+  id String @id @default(uuid())
+
+  campaign   Campaign @relation(fields: [campaignId], references: [id])
+  campaignId String
+
+  user   User   @relation(fields: [userId], references: [id])
+  userId String
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  voucher   Voucher[]
+}
+
+enum VoucherType {
+  PRODUCT_PERCENTAGE
+  FEE_PERCENTAGE
+}
+
+model Voucher {
+  id String @id @default(uuid())
+
+  type VoucherType
+
+  code String @unique
+
+  value Float
+
+  isUsed Boolean @default(false)
+
+  order   Order?  @relation(fields: [orderId], references: [id])
+  orderId String?
+
+  campaign   Campaign? @relation(fields: [campaignId], references: [id])
+  campaignId String?
+
+  campaignUser   CampaignUser? @relation(fields: [campaignUserId], references: [id])
+  campaignUserId String?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+}

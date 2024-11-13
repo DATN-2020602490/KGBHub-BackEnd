@@ -1,0 +1,22 @@
+services:
+  kgb-hub:
+    image: kgb-hub
+    build: .
+    restart: always
+    networks:
+      - kgb-hub
+      - databases
+    logging:
+      options:
+        max-size: 5m
+    ports:
+      - 3000:3000
+    environment:
+      - NODE_ENV=production
+    volumes:
+      - ./uploads:/app/uploads
+networks:
+  kgb-hub:
+    name: kgb-hub
+  databases:
+    name: databases

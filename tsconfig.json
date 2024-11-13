@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "target": "es2019",
+    "module": "commonjs",
+    "outDir": "dist",
+    "strict": false,
+    "allowJs": false,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "strictPropertyInitialization": false,
+    "jsx": "react",
+  },
+  "exclude": [
+    "node_modules",
+    "**/*.spec.ts",
+    "out/**",
+    "dist",
+    "dist/**"
+  ],
+  "include": ["**/*.ts"],
+  "ts-node": {
+    "swc": true
+  }
+}
+

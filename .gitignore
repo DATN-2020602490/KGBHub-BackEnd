@@ -1,0 +1,8 @@
+node_modules
+dist
+database/postgres
+database/redis
+.env
+.idea
+.DS_Store
+uploads/
