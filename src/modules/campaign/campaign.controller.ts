@@ -257,7 +257,7 @@ export default class ChatController extends BaseController {
         data: {
           campaignId,
           userId: user.id,
-          voucher: { connect: { id: remainingVoucher.id } },
+          vouchers: { connect: { id: remainingVoucher.id } },
         },
       });
       res.status(200).json(_);
@@ -299,7 +299,7 @@ export default class ChatController extends BaseController {
             campaignDiscounts: true,
           },
         },
-        voucher: true,
+        vouchers: true,
       },
       orderBy: { createdAt: 'desc' },
     })) as CampaignUser[];

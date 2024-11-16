@@ -18,15 +18,12 @@ model User {
   firstName      String?
   lastName       String?
   gender         String?
-  password       String?
-  salt           String?
   roles          UserRole[]
   phone          String?
   address        String?
   avatarFileId   String?
   coverFileId    String?
   birthday       DateTime?
-  verifyCode     String?
   platform       Platform
   refreshToken   String?
   firstTime      Boolean    @default(true) // false if sent first time public profile email
@@ -252,6 +249,10 @@ model CoursesOnCarts {
 
   cart   Cart   @relation(fields: [cartId], references: [id])
   cartId String
+
+    createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  deletedAt      DateTime?
 }
 
 model Part {
@@ -710,7 +711,7 @@ model CampaignUser {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
-  voucher   Voucher[]
+  vouchers   Voucher[]
 }
 
 enum VoucherType {

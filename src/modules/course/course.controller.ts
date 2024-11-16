@@ -21,6 +21,7 @@ import { fileMiddleware } from '../../middlewares/file.middleware';
 import { deleteCourse, deletePart, getCourse, getCourses, refreshPart } from './course.service';
 import { generateRandomString } from '../../util/common.util';
 import { convert } from 'html-to-text';
+import { isString } from 'lodash';
 
 export default class CourseController extends BaseController {
   public path = '/api/v1/courses';
@@ -157,13 +158,19 @@ export default class CourseController extends BaseController {
     if (!(course?.userId === req.user.id || req.user.roles.find((role) => role.role.name === RoleEnum.ADMIN))) {
       throw new HttpException(401, 'Access denied');
     }
-    const { courseName, descriptionMD, category } = req.body;
-    const isPublic = req.body.isPublic === 'true';
-    const priceAmount = parseFloat(req.body.priceAmount || '0');
-    const knowledgeGained = (JSON.parse(req.body.knowledgeGained) as string[]) || [];
+    const courseName = req.gp<string>('courseName', course.courseName, String);
+    const descriptionMD = req.gp<string>('descriptionMD', course.descriptionMD, String);
+    const category = req.gp<CourseCategory>('category', course.category, CourseCategory);
+    const isPublic = req.gp<string>('isPublic', String(course.isPublic), String) === 'true';
+    const priceAmount = parseFloat(req.gp<string>('priceAmount', String(course.priceAmount), String));
+    let knowledgeGained = req.body.knowledgeGained || course.knowledgeGained;
+    if (isString(knowledgeGained)) {
+      knowledgeGained = JSON.parse(knowledgeGained as string) as string[];
+    }
     if (!(courseName && knowledgeGained.length > 0 && descriptionMD && category)) {
       return new HttpException(400, 'missing required fields');
     }
+
     const parts = await this.prisma.part.findMany({
       where: { courseId: id },
       include: { lessons: true },

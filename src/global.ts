@@ -126,8 +126,6 @@ export type User = {
   firstName?: string;
   lastName?: string;
   gender?: string;
-  password?: string;
-  salt?: string;
   roles: UserRole[];
   phone?: string;
   address?: string;
@@ -136,7 +134,6 @@ export type User = {
   coverFileId?: string;
   coverFile?: File;
   birthday?: Date;
-  verifyCode?: string;
   platform: Platform;
   refreshToken?: string;
   firstTime: boolean;
@@ -314,6 +311,10 @@ export type CoursesOnCarts = {
 
   cart: Cart;
   cartId: string;
+
+  createdAt: Date;
+  updatedAt: Date;
+  deletedAt?: Date;
 };
 
 export type Part = {
@@ -706,7 +707,7 @@ export type CampaignUser = {
 
   user: User;
   userId: string;
-  voucher: Voucher[];
+  vouchers: Voucher[];
 
   createdAt: Date;
   updatedAt: Date;

@@ -21,7 +21,7 @@ const RefreshData = new CronJob(
           data: { totalRating: rates.length || 0, avgRating: avgRating || 0 },
         });
         const lessons = (await prisma.lesson.findMany({
-          where: { part: { courseId: _.id } },
+          where: { part: { courseId: _.id }, lessonType: LessonType.VIDEO },
           include: { part: true },
         })) as Lesson[];
         for (const __ of lessons) {
