@@ -1,5 +1,7 @@
 # KGBHub-BackEnd
 
+![alt text](https://i.imgur.com/aUFPomB.png)
+
 ## Requirements
 - **Node.js**: Version **20 LTS** or later.
 - **Yarn**: Yarn package manager.
