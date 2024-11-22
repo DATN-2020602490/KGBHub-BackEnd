@@ -1,4 +1,4 @@
-import { CourseStatus } from '@prisma/client';
+import { CourseStatus, LessonType } from '@prisma/client';
 import prisma from '../../configs/prisma';
 import { userSelector } from '../../global';
 
@@ -19,10 +19,12 @@ export const refreshCourse = async (id: string) => {
   let totalDuration = 0;
   for (const part of course.parts) {
     for (const lesson of part.lessons) {
-      const video = await prisma.file.findFirst({
-        where: { id: lesson.videoFileId },
-      });
-      totalDuration += video?.duration || 0;
+      if (lesson.lessonType === LessonType.VIDEO) {
+        const video = await prisma.file.findFirst({
+          where: { id: lesson.videoFileId },
+        });
+        totalDuration += video?.duration || 0;
+      }
     }
   }
   let totalRating = 0;

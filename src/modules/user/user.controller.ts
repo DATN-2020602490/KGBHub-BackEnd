@@ -159,8 +159,6 @@ export default class UserController extends BaseController {
       throw new NotFoundException('user', id);
     }
     delete user.refreshToken;
-    delete user.password;
-    delete user.salt;
     return res.status(200).send(user);
   };
   getProfile = async (req: KGBRequest, res: KGBResponse) => {

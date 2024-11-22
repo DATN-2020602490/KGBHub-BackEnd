@@ -1,5 +1,5 @@
 import { ExtractJwt, Strategy as JwtStrategy } from 'passport-jwt';
-import AnonymousStrategy from 'passport-anonymous';
+import AnonymousStrategy, { Stategy } from 'passport-anonymous';
 import { Strategy as GoogleStrategy, VerifyCallback } from 'passport-google-oauth20';
 import passport from 'passport';
 import { render } from '@react-email/render';
@@ -122,8 +122,6 @@ const jwtStrategy = new JwtStrategy(
 passport.use('google', googleStrategy);
 passport.use('jwt', jwtStrategy);
 passport.use(new AnonymousStrategy());
-
-export default passport;
 
 export const KGBAuth = (
   strategy: string | string[] | passport.Strategy,

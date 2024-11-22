@@ -4,6 +4,7 @@ import stripe from './configs/stripe';
 import { convert } from 'html-to-text';
 import { getPlatformFee } from './modules/stripe/stripe.service';
 import BigNumber from 'bignumber.js';
+import { refreshCourse } from './modules/course/course.service';
 
 type MigrateFunction = () => void;
 
@@ -130,6 +131,14 @@ migrate.add('add_original_amount', async () => {
       },
     });
   }
+});
+
+migrate.add('refresh_data', () => {
+  prisma.course.findMany({}).then(async (_) => {
+    for (const course of _) {
+      await refreshCourse(course.id);
+    }
+  });
 });
 
 export default migrate;

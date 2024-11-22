@@ -10,8 +10,8 @@ export default class PublicCourseController extends BaseController {
   public path = '/api/v1-public/courses';
 
   public initializeRoutes() {
-    this.router.get(`/`, this.getCourses);
-    this.router.get(`/:id`, this.getCourse);
+    this.router.get(`/`, KGBAuth(['jwt', 'anonymous']), this.getCourses);
+    this.router.get(`/:id`, KGBAuth(['jwt', 'anonymous']), this.getCourse);
     this.router.post(`/actions/rate`, KGBAuth('jwt'), this.rateAction);
   }
 
@@ -209,6 +209,40 @@ export default class PublicCourseController extends BaseController {
     for (const course of courses) {
       const totalBought = course.coursesPaid.filter((cp) => cp.order.status === OrderStatus.SUCCESS).length;
       course['totalBought'] = totalBought;
+      if (req.user) {
+        const [isHearted, isBought, lessonDones] = await Promise.all([
+          this.prisma.heart.findFirst({
+            where: {
+              userId: req.user.id,
+              courseId: course.id,
+            },
+          }),
+          this.prisma.coursesPaid.findFirst({
+            where: {
+              userId: req.user.id,
+              courseId: course.id,
+              order: { status: OrderStatus.SUCCESS },
+            },
+          }),
+          this.prisma.lessonDone.findMany({
+            where: {
+              userId: req.user.id,
+              lesson: {
+                part: {
+                  courseId: course.id,
+                },
+              },
+            },
+            orderBy: {
+              createdAt: 'desc',
+            },
+          }),
+        ]);
+        course['isHearted'] = !!isHearted;
+        course['isBought'] = !!isBought;
+        course['currentLessonId'] = lessonDones[0]?.lessonId;
+        course['process'] = lessonDones.length ? Math.floor((lessonDones.length / course.totalLesson) * 100) : 0;
+      }
     }
     return res.status(200).json({
       courses: isBestSeller ? bestSellerCourses : courses,
@@ -268,6 +302,41 @@ export default class PublicCourseController extends BaseController {
       throw new NotFoundException('course', id);
     }
     course['totalBought'] = course.coursesPaid.filter((cp) => cp.order.status === OrderStatus.SUCCESS).length;
+
+    if (req.user) {
+      const [isHearted, isBought, lessonDones] = await Promise.all([
+        this.prisma.heart.findFirst({
+          where: {
+            userId: req.user.id,
+            courseId: course.id,
+          },
+        }),
+        this.prisma.coursesPaid.findFirst({
+          where: {
+            userId: req.user.id,
+            courseId: course.id,
+            order: { status: OrderStatus.SUCCESS },
+          },
+        }),
+        this.prisma.lessonDone.findMany({
+          where: {
+            userId: req.user.id,
+            lesson: {
+              part: {
+                courseId: course.id,
+              },
+            },
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+        }),
+      ]);
+      course['isHearted'] = !!isHearted;
+      course['isBought'] = !!isBought;
+      course['currentLessonId'] = lessonDones[0]?.lessonId;
+      course['process'] = lessonDones.length ? Math.floor((lessonDones.length / course.totalLesson) * 100) : 0;
+    }
     return res.status(200).json(course);
   };
 }

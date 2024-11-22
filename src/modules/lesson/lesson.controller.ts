@@ -8,6 +8,7 @@ import { RoleEnum, LessonType, LessonStatus } from '@prisma/client';
 import { KGBRequest, File } from '../../global';
 import { fileMiddleware } from '../../middlewares/file.middleware';
 import { deleteLesson, getLesson, getLessons } from './lesson.service';
+import { refreshCourse } from '../course/course.service';
 
 export default class LessonController extends BaseController {
   public path = '/api/v1/lessons';
@@ -102,11 +103,12 @@ export default class LessonController extends BaseController {
           totalDuration: { increment: (video as File).duration },
         },
       });
+      await refreshCourse(courseId);
     } else if (lessonType === LessonType.TEXT) {
       const { lessonName, descriptionMD, title, content } = req.body;
       const lessonNumber = parseInt(req.body.lessonNumber || '0');
       const partId = req.gp<string>('partId', undefined, String);
-      const courseId = parseInt(req.body.courseId || '0');
+      const courseId = req.gp<string>('courseId', undefined, String);
       const trialAllowed = req.body.trialAllowed === 'true';
       if (!lessonName || !lessonNumber || !descriptionMD || !partId || !courseId) {
         throw new HttpException(400, 'Missing fields');
@@ -140,7 +142,8 @@ export default class LessonController extends BaseController {
         },
       });
       const newLesson = await getLesson(lesson.id, reqUser.id);
-      return res.status(200).json(newLesson);
+      res.status(200).json(newLesson);
+      await refreshCourse(courseId);
     } else {
       throw new HttpException(400, 'Invalid lesson type');
     }

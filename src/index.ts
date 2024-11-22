@@ -2,9 +2,9 @@ import 'dotenv/config';
 import App from './app';
 import StripeChecker from './configs/stripe.checker';
 import migrate from './migrate';
-
 import './configs/prisma.middleware';
 import RefreshData from './configs/refresh.data';
+
 (global as any).check = (condition: any, message: string | Error) => {
   if (!condition) {
     if (typeof message === 'string') {

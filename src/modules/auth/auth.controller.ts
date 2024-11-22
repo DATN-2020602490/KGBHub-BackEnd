@@ -122,8 +122,6 @@ export default class AuthController extends BaseController {
 
     delete user.platform;
     delete user.refreshToken;
-    delete user.password;
-    delete user.salt;
 
     return user;
   };
