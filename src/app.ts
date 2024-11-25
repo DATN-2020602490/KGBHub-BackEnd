@@ -21,6 +21,7 @@ import PublicCourseController from './modules/public/course/course.controller';
 import PublicLessonController from './modules/public/lesson/lesson.controller';
 import ReportController from './modules/report/report.controller';
 import TestController from './modules/test/test.controller';
+import CampaignController from './modules/campaign/campaign.controller';
 
 class App {
   public app: express.Application;
@@ -52,6 +53,7 @@ class App {
       new TestController(),
       new CartController(),
       new ReportController(),
+      new CampaignController(),
     ];
 
     this.initializeMiddlewares();

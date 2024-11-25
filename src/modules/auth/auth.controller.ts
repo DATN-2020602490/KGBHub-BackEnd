@@ -63,7 +63,7 @@ export default class AuthController extends BaseController {
       const uniqueSuffix = await getUniqueSuffix('username', this.prisma.user, 'user_');
       const _ = await this.prisma.user.create({
         data: {
-          username: `user_${uniqueSuffix}`,
+          username: uniqueSuffix,
           email,
           firstName: given_name,
           lastName: family_name,

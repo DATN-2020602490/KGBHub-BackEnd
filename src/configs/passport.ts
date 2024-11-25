@@ -27,7 +27,7 @@ const googleStrategy = new GoogleStrategy(
         const uniqueSuffix = await getUniqueSuffix('username', User, 'user_');
         const _ = await User.create({
           data: {
-            username: `user_${uniqueSuffix}`,
+            username: uniqueSuffix,
             email: normalizeEmail(email),
             firstName: profile._json.given_name,
             lastName: profile._json.family_name,

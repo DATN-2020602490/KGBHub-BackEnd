@@ -109,5 +109,5 @@ export const getUniqueSuffix = async (field: string, model: any, previous = '') 
   while (await model.findFirst({ where: { [field]: `${previous}${uniqueSuffix}` } })) {
     uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
   }
-  return uniqueSuffix;
+  return `${previous}${uniqueSuffix}`;
 };

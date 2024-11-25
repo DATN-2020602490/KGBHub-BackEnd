@@ -28,13 +28,6 @@ export default class PublicLessonController extends BaseController {
     }
     lesson = await this.prisma.lesson.findFirst({
       where: { id },
-      include: {
-        hearts: {
-          include: {
-            user: userSelector,
-          },
-        },
-      },
     });
     return res.status(200).json(lesson);
   };

@@ -6,7 +6,22 @@ export const refreshCourse = async (id: string) => {
   if (!id) {
     return;
   }
-  const course = await getCourse(id, id, true);
+  const course = await prisma.course.findFirst({
+    where: { id },
+    include: {
+      coursesPaid: {
+        include: {
+          user: userSelector,
+        },
+      },
+      parts: {
+        include: {
+          lessons: true,
+        },
+      },
+      rating: true,
+    },
+  });
   if (!course) {
     return;
   }
@@ -49,37 +64,14 @@ export const getCourse = async (id: string, userId: string, admin = false) => {
     const course = await prisma.course.findFirst({
       where: { id },
       include: {
-        rating: {
-          include: {
-            user: userSelector,
-          },
-        },
         coursesPaid: {
-          include: {
-            user: userSelector,
-          },
-        },
-        hearts: {
           include: {
             user: userSelector,
           },
         },
         parts: {
           include: {
-            lessons: {
-              include: {
-                comments: {
-                  include: {
-                    user: userSelector,
-                  },
-                },
-                hearts: {
-                  include: {
-                    user: userSelector,
-                  },
-                },
-              },
-            },
+            lessons: true,
           },
         },
       },
@@ -89,37 +81,14 @@ export const getCourse = async (id: string, userId: string, admin = false) => {
   const course = await prisma.course.findFirst({
     where: { id, userId },
     include: {
-      rating: {
-        include: {
-          user: userSelector,
-        },
-      },
       coursesPaid: {
-        include: {
-          user: userSelector,
-        },
-      },
-      hearts: {
         include: {
           user: userSelector,
         },
       },
       parts: {
         include: {
-          lessons: {
-            include: {
-              comments: {
-                include: {
-                  user: userSelector,
-                },
-              },
-              hearts: {
-                include: {
-                  user: userSelector,
-                },
-              },
-            },
-          },
+          lessons: true,
         },
       },
     },
@@ -159,38 +128,14 @@ export const getCourses = async (
       [orderBy]: direction,
     },
     include: {
-      rating: {
-        include: {
-          user: userSelector,
-        },
-      },
       coursesPaid: {
         include: {
           user: userSelector,
         },
       },
-      hearts: {
-        include: {
-          user: userSelector,
-        },
-      },
-
       parts: {
         include: {
-          lessons: {
-            include: {
-              comments: {
-                include: {
-                  user: userSelector,
-                },
-              },
-              hearts: {
-                include: {
-                  user: userSelector,
-                },
-              },
-            },
-          },
+          lessons: true,
         },
       },
     },

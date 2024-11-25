@@ -12,74 +12,7 @@ export default class PublicCourseController extends BaseController {
   public initializeRoutes() {
     this.router.get(`/`, KGBAuth(['jwt', 'anonymous']), this.getCourses);
     this.router.get(`/:id`, KGBAuth(['jwt', 'anonymous']), this.getCourse);
-    this.router.post(`/actions/rate`, KGBAuth('jwt'), this.rateAction);
   }
-
-  rateAction = async (req: KGBRequest, res: KGBResponse) => {
-    const reqUser = req.user;
-    const courseId = req.gp<string>('courseId', undefined, String);
-    const content = req.gp<string>('content', null, String);
-    if (!courseId) {
-      throw new HttpException(400, 'courseId is missing');
-    }
-    const course = await this.prisma.course.findFirst({
-      where: { id: courseId },
-    });
-    if (!course) {
-      throw new NotFoundException('course', courseId);
-    }
-    const paid = await this.prisma.coursesPaid.findFirst({
-      where: { userId: reqUser.id, courseId },
-    });
-    if (!paid) {
-      throw new HttpException(400, 'You have to buy this course first');
-    }
-    const star = parseFloat(req.body.star);
-    if (!star || isNaN(star) || star < 0 || star > 5) {
-      throw new HttpException(400, 'Invalid star');
-    }
-    const existRate = await this.prisma.rating.findFirst({
-      where: { userId: reqUser.id, courseId },
-    });
-    if (!existRate) {
-      const data = {} as any;
-      if (content) {
-        data['content'] = content;
-      }
-      data['star'] = star;
-      data['user'] = { connect: { id: reqUser.id } };
-      data['course'] = { connect: { id: courseId } };
-      await this.prisma.rating.create({
-        data,
-      });
-      await this.prisma.course.update({
-        where: { id: courseId },
-        data: { totalRating: { increment: 1 } },
-      });
-    } else {
-      const data = {};
-      if (content) {
-        data['content'] = content;
-      }
-      data['star'] = star;
-      await this.prisma.rating.updateMany({
-        where: { userId: reqUser.id, courseId },
-        data,
-      });
-    }
-    const rates = await this.prisma.rating.findMany({
-      where: { courseId },
-    });
-    const avg = rates.reduce((acc, rate) => acc + rate.star, 0) / (rates.length || 1);
-    await this.prisma.course.update({
-      where: { id: courseId },
-      data: { avgRating: avg },
-    });
-    const _ = await this.prisma.rating.findFirst({
-      where: { userId: reqUser.id, courseId },
-    });
-    return res.status(200).json(_);
-  };
 
   getCourses = async (req: KGBRequest, res: KGBResponse) => {
     const limit = Number(req.query.limit) || 12;
@@ -159,11 +92,6 @@ export default class PublicCourseController extends BaseController {
     const courses = (await this.prisma.course.findMany({
       ...query,
       include: {
-        rating: {
-          include: {
-            user: userSelector,
-          },
-        },
         user: userSelector,
         coursesPaid: {
           where: { order: { status: OrderStatus.SUCCESS } },
@@ -173,28 +101,9 @@ export default class PublicCourseController extends BaseController {
           },
         },
 
-        hearts: {
-          include: {
-            user: userSelector,
-          },
-        },
-
         parts: {
           include: {
-            lessons: {
-              include: {
-                comments: {
-                  include: {
-                    user: userSelector,
-                  },
-                },
-                hearts: {
-                  include: {
-                    user: userSelector,
-                  },
-                },
-              },
-            },
+            lessons: true,
           },
         },
       },
@@ -257,11 +166,6 @@ export default class PublicCourseController extends BaseController {
     const course = await this.prisma.course.findFirst({
       where: { id, isPublic: true, status: CourseStatus.APPROVED },
       include: {
-        rating: {
-          include: {
-            user: userSelector,
-          },
-        },
         user: userSelector,
         coursesPaid: {
           include: {
@@ -272,28 +176,9 @@ export default class PublicCourseController extends BaseController {
           },
         },
 
-        hearts: {
-          include: {
-            user: userSelector,
-          },
-        },
-
         parts: {
           include: {
-            lessons: {
-              include: {
-                comments: {
-                  include: {
-                    user: userSelector,
-                  },
-                },
-                hearts: {
-                  include: {
-                    user: userSelector,
-                  },
-                },
-              },
-            },
+            lessons: true,
           },
         },
       },

@@ -8,7 +8,8 @@ import checkRoleMiddleware from '../../middlewares/checkRole.middleware';
 import NotFoundException from '../../exceptions/not-found';
 import { isString } from 'lodash';
 import { KGBAuth } from '../../configs/passport';
-export default class ChatController extends BaseController {
+
+export default class CampaignController extends BaseController {
   public path = '/api/v1/campaigns';
 
   public initializeRoutes() {

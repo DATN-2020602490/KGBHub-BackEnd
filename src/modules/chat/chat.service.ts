@@ -144,7 +144,7 @@ export const createChat = async (body: any, reqUser: User, io: IO) => {
       const conversation = await prisma.conversation.create({
         data: {
           conversationType: ConversationType.GROUP_CHAT,
-          roomId: `group_chat_${uniqueSuffix}`,
+          roomId: uniqueSuffix,
           chatMembers: {
             createMany: {
               data: userIds.map((userId) => {

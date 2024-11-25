@@ -5,18 +5,6 @@ import axios from 'axios';
 import prisma from './prisma';
 import { lookup } from 'mime-types';
 
-// const storage = multer.diskStorage({
-//   destination: function (req, file, cb) {
-//     mkdirSync('uploads/', { recursive: true });
-//     cb(null, 'uploads/');
-//   },
-//   filename: function (req, file, cb) {
-//     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-//     const extension = file.mimetype.split('/')[1];
-//     cb(null, file.fieldname + '-' + uniqueSuffix + '.' + extension);
-//   },
-// });
-
 const videoStorage = multer.diskStorage({
   destination: (req, file, cb) => {
     mkdirSync('uploads/', { recursive: true });
@@ -41,10 +29,6 @@ const KGBUploader = multer({
       cb(new Error('Only JPEG, PNG, JPG, GIF images and MP4, MOV videos are allowed!'));
     }
   },
-});
-
-const upload = multer({
-  storage: multer.memoryStorage(),
 });
 
 const downloadImage = async (url: string, userId: string) => {
@@ -107,4 +91,4 @@ const downloadImage = async (url: string, userId: string) => {
     return null;
   }
 };
-export { upload, KGBUploader, downloadImage };
+export { KGBUploader, downloadImage };

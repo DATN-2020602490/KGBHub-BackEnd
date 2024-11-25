@@ -63,6 +63,7 @@ export type ReportTable = {
   endDate: number | Date;
   target: 'system' | 'author';
   authorId?: string;
+  author: User;
   systemReport?: ReportData;
   authorReport?: ReportData;
 };

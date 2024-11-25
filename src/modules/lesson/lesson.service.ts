@@ -6,18 +6,6 @@ import { refreshCourse } from '../course/course.service';
 export const getLesson = async (id: string, userId: string, requireParentId = true) => {
   const lesson = await prisma.lesson.findFirst({
     where: { id, userId },
-    include: {
-      comments: {
-        include: {
-          user: userSelector,
-        },
-      },
-      hearts: {
-        include: {
-          user: userSelector,
-        },
-      },
-    },
   });
   if (requireParentId) {
     const course = await prisma.course.findFirst({
@@ -45,18 +33,6 @@ export const getLessons = async (id: string, limit: number, offset: number, stat
     where,
     take: limit,
     skip: offset,
-    include: {
-      comments: {
-        include: {
-          user: userSelector,
-        },
-      },
-      hearts: {
-        include: {
-          user: userSelector,
-        },
-      },
-    },
   });
   const total = await prisma.lesson.count({ where: { userId: id } });
   return { lessons, total };

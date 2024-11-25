@@ -1,5 +1,5 @@
 import { BaseController } from '../../abstractions/base.controller';
-import { CoursesPaid, KGBResponse, ReportTable } from '../../global';
+import { CoursesPaid, KGBResponse, ReportTable, userSelector } from '../../global';
 import { KGBAuth } from '../../configs/passport';
 import { KGBRequest } from '../../global';
 import checkRoleMiddleware from '../../middlewares/checkRole.middleware';
@@ -65,13 +65,14 @@ export default class ReportController extends BaseController {
       },
       include: { order: true, course: true },
     })) as CoursesPaid[];
-
+    const author = await this.prisma.user.findFirst({ where: { id: authorId }, ...userSelector });
     const result = {
       groupBy,
       startDate: new Date(startDate),
       endDate: new Date(endDate),
       target: 'author',
       authorId: authorId,
+      author,
       authorReport: processOrdersReportAuthor(_, groupBy),
     } as ReportTable;
     return res.status(200).json(result);
