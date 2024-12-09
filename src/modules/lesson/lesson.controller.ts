@@ -1,43 +1,43 @@
-import { BaseController } from '../../abstractions/base.controller';
-import { KGBResponse } from '../../global';
-import NotFoundException from '../../exceptions/not-found';
-import { KGBAuth } from '../../configs/passport';
-import HttpException from '../../exceptions/http-exception';
-import checkRoleMiddleware from '../../middlewares/checkRole.middleware';
-import { RoleEnum, LessonType, LessonStatus } from '@prisma/client';
-import { KGBRequest, File } from '../../global';
-import { fileMiddleware } from '../../middlewares/file.middleware';
-import { deleteLesson, getLesson, getLessons } from './lesson.service';
-import { refreshCourse } from '../course/course.service';
+import { BaseController } from "../../abstractions/base.controller";
+import { KGBResponse } from "../../global";
+import NotFoundException from "../../exceptions/not-found";
+import { KGBAuth } from "../../configs/passport";
+import HttpException from "../../exceptions/http-exception";
+import checkRoleMiddleware from "../../middlewares/checkRole.middleware";
+import { RoleEnum, LessonType, LessonStatus } from "@prisma/client";
+import { KGBRequest, File } from "../../global";
+import { fileMiddleware } from "../../middlewares/file.middleware";
+import { deleteLesson, getLesson, getLessons } from "./lesson.service";
+import { refreshCourse } from "../course/course.service";
 
 export default class LessonController extends BaseController {
-  public path = '/api/v1/lessons';
+  public path = "/api/v1/lessons";
 
   public initializeRoutes() {
     this.router.post(
       `/`,
-      KGBAuth('jwt'),
+      KGBAuth("jwt"),
       fileMiddleware([
-        { name: 'video', maxCount: 1 },
-        { name: 'thumbnail', maxCount: 1 },
+        { name: "video", maxCount: 1 },
+        { name: "thumbnail", maxCount: 1 },
       ]),
       this.createLesson,
     );
-    this.router.get(`/`, KGBAuth('jwt'), this.getLessons);
-    this.router.get(`/:id`, KGBAuth('jwt'), this.getLesson);
+    this.router.get(`/`, KGBAuth("jwt"), this.getLessons);
+    this.router.get(`/:id`, KGBAuth("jwt"), this.getLesson);
     this.router.patch(
       `/:id`,
-      KGBAuth('jwt'),
+      KGBAuth("jwt"),
       fileMiddleware([
-        { name: 'video', maxCount: 1 },
-        { name: 'thumbnail', maxCount: 1 },
+        { name: "video", maxCount: 1 },
+        { name: "thumbnail", maxCount: 1 },
       ]),
       this.updateLesson,
     );
-    this.router.delete(`/:id`, KGBAuth('jwt'), this.deleteLesson);
+    this.router.delete(`/:id`, KGBAuth("jwt"), this.deleteLesson);
     this.router.patch(
       `/:id/actions/approve`,
-      KGBAuth('jwt'),
+      KGBAuth("jwt"),
       checkRoleMiddleware([RoleEnum.ADMIN]),
       this.approveLesson,
     );
@@ -75,12 +75,12 @@ export default class LessonController extends BaseController {
         thumbnail = { id: null } as File;
       }
       const { lessonName, descriptionMD } = req.body;
-      const lessonNumber = parseInt(req.body.lessonNumber || '0');
-      const partId = req.gp<string>('partId', undefined, String);
-      const courseId = req.gp<string>('courseId', undefined, String);
-      const trialAllowed = req.body.trialAllowed === 'true';
+      const lessonNumber = parseInt(req.body.lessonNumber || "0");
+      const partId = req.gp<string>("partId", undefined, String);
+      const courseId = req.gp<string>("courseId", undefined, String);
+      const trialAllowed = req.body.trialAllowed === "true";
       if (!lessonName || !lessonNumber || !descriptionMD || !partId || !courseId) {
-        throw new HttpException(400, 'Missing fields');
+        throw new HttpException(400, "Missing fields");
       }
       const lesson = await this.prisma.lesson.create({
         data: {
@@ -106,12 +106,12 @@ export default class LessonController extends BaseController {
       await refreshCourse(courseId);
     } else if (lessonType === LessonType.TEXT) {
       const { lessonName, descriptionMD, title, content } = req.body;
-      const lessonNumber = parseInt(req.body.lessonNumber || '0');
-      const partId = req.gp<string>('partId', undefined, String);
-      const courseId = req.gp<string>('courseId', undefined, String);
-      const trialAllowed = req.body.trialAllowed === 'true';
+      const lessonNumber = parseInt(req.body.lessonNumber || "0");
+      const partId = req.gp<string>("partId", undefined, String);
+      const courseId = req.gp<string>("courseId", undefined, String);
+      const trialAllowed = req.body.trialAllowed === "true";
       if (!lessonName || !lessonNumber || !descriptionMD || !partId || !courseId) {
-        throw new HttpException(400, 'Missing fields');
+        throw new HttpException(400, "Missing fields");
       }
       let thumbnail: File = null;
       const thumbnailFile = req.fileModelsWithFieldName?.thumbnail
@@ -134,8 +134,8 @@ export default class LessonController extends BaseController {
           part: { connect: { id: partId } },
           trialAllowed: trialAllowed || false,
           descriptionMD,
-          title: title || '',
-          content: content || '',
+          title: title || "",
+          content: content || "",
           status: LessonStatus.PENDING,
           user: { connect: { id: req.user.id } },
           thumbnailFileId: (thumbnail as File).id,
@@ -145,18 +145,20 @@ export default class LessonController extends BaseController {
       res.status(200).json(newLesson);
       await refreshCourse(courseId);
     } else {
-      throw new HttpException(400, 'Invalid lesson type');
+      throw new HttpException(400, "Invalid lesson type");
     }
   };
   getLesson = async (req: KGBRequest, res: KGBResponse) => {
     const reqUser = req.user;
-    const id = req.gp<string>('id', undefined, String);
+    const id = req.gp<string>("id", undefined, String);
     const lesson = await getLesson(id, reqUser.id);
     if (!lesson) {
-      throw new NotFoundException('lesson', id);
+      throw new NotFoundException("lesson", id);
     }
-    if (!(reqUser.id === lesson.userId || reqUser.roles.find((_) => _.role.name === RoleEnum.ADMIN))) {
-      throw new HttpException(403, 'Forbidden');
+    if (
+      !(reqUser.id === lesson.userId || reqUser.roles.find((_) => _.role.name === RoleEnum.ADMIN))
+    ) {
+      throw new HttpException(403, "Forbidden");
     }
     return res.status(200).json(lesson);
   };
@@ -164,25 +166,25 @@ export default class LessonController extends BaseController {
     const reqUser = req.user;
     const limit = Number(req.query.limit) || 12;
     const offset = Number(req.query.offset) || 0;
-    const status = req.gp<LessonStatus>('status', null, LessonStatus);
+    const status = req.gp<LessonStatus>("status", null, LessonStatus);
     const { lessons, total } = await getLessons(reqUser.id, limit, offset, status);
     res.status(200).json({ lessons, total, page: offset / limit + 1 });
   };
 
   updateLesson = async (req: KGBRequest, res: KGBResponse) => {
     const reqUser = req.user;
-    const id = req.gp<string>('id', undefined, String);
+    const id = req.gp<string>("id", undefined, String);
     const lesson = await this.prisma.lesson.findUnique({
       where: { id, userId: reqUser.id },
     });
     if (!lesson) {
-      throw new NotFoundException('lesson', id);
+      throw new NotFoundException("lesson", id);
     }
     if (lesson.lessonType === LessonType.VIDEO) {
       const { lessonName, lessonNumber, partId, descriptionMD } = req.body;
       let trialAllowed = lesson.trialAllowed;
       if (req.body.trialAllowed) {
-        trialAllowed = req.body.trialAllowed === 'true';
+        trialAllowed = req.body.trialAllowed === "true";
       }
       const data: any = {
         lessonName: lessonName || lesson.lessonName,
@@ -228,7 +230,8 @@ export default class LessonController extends BaseController {
       const newLesson = await getLesson(id, reqUser.id);
       return res.status(200).json(newLesson);
     } else if (lesson.lessonType === LessonType.TEXT) {
-      const { lessonName, lessonNumber, partId, trialAllowed, descriptionMD, title, content } = req.body;
+      const { lessonName, lessonNumber, partId, trialAllowed, descriptionMD, title, content } =
+        req.body;
 
       let thumbnail: File = null;
       const thumbnailFile = req.fileModelsWithFieldName?.thumbnail
@@ -261,27 +264,27 @@ export default class LessonController extends BaseController {
       const newLesson = await getLesson(id, reqUser.id);
       return res.status(200).json(newLesson);
     } else {
-      throw new HttpException(400, 'Invalid lesson type');
+      throw new HttpException(400, "Invalid lesson type");
     }
   };
   deleteLesson = async (req: KGBRequest, res: KGBResponse) => {
     const reqUser = req.user;
-    const id = req.gp<string>('id', undefined, String);
+    const id = req.gp<string>("id", undefined, String);
     const lesson = await getLesson(id, reqUser.id);
     if (!lesson) {
-      throw new NotFoundException('lesson', id);
+      throw new NotFoundException("lesson", id);
     }
     await deleteLesson(id);
     return res.status(200).json(lesson);
   };
   approveLesson = async (req: KGBRequest, res: KGBResponse) => {
-    const id = req.gp<string>('id', undefined, String);
+    const id = req.gp<string>("id", undefined, String);
     const lesson = await this.prisma.lesson.findFirst({
       where: { id },
       include: { part: true },
     });
     if (!lesson) {
-      throw new NotFoundException('lesson', id);
+      throw new NotFoundException("lesson", id);
     }
     await this.prisma.lesson.update({
       where: { id },

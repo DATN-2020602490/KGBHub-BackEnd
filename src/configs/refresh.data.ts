@@ -1,14 +1,14 @@
-import { getVideoDurationInSeconds } from 'get-video-duration';
-import { CronJob } from 'cron';
-import { LessonType } from '@prisma/client';
-import { Lesson } from '../global';
-import prisma from './prisma';
-import { refreshCourse } from '../modules/course/course.service';
+import { getVideoDurationInSeconds } from "get-video-duration";
+import { CronJob } from "cron";
+import { LessonType } from "@prisma/client";
+import { Lesson } from "../global";
+import prisma from "./prisma";
+import { refreshCourse } from "../modules/course/course.service";
 
 const RefreshData = new CronJob(
-  '0 */5 * * * *',
+  "0 */5 * * * *",
   async function () {
-    console.log('REFRESH DATA');
+    console.log("REFRESH DATA");
 
     const courses = await prisma.course.findMany();
     for (const _ of courses) {

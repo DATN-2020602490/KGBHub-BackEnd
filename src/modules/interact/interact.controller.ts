@@ -1,37 +1,37 @@
-import { BaseController } from '../../abstractions/base.controller';
-import { KGBResponse, userSelector } from '../../global';
-import { KGBAuth } from '../../configs/passport';
-import NotFoundException from '../../exceptions/not-found';
-import HttpException from '../../exceptions/http-exception';
-import { KGBRequest } from '../../global';
-import { decodeJWT } from '../auth/auth.service';
+import { BaseController } from "../../abstractions/base.controller";
+import { KGBResponse, userSelector } from "../../global";
+import { KGBAuth } from "../../configs/passport";
+import NotFoundException from "../../exceptions/not-found";
+import HttpException from "../../exceptions/http-exception";
+import { KGBRequest } from "../../global";
+import { decodeJWT } from "../auth/auth.service";
 
 export default class InteractController extends BaseController {
-  public path = '/api/v1/interacts';
+  public path = "/api/v1/interacts";
 
   public initializeRoutes() {
-    this.router.post('/rates', KGBAuth('jwt'), this.rateAction);
-    this.router.get('/rates', this.getRates);
-    this.router.post('/hearts', KGBAuth('jwt'), this.heartAction);
-    this.router.post('/comments', KGBAuth('jwt'), this.createCommentAction);
-    this.router.get('/', this.getInteracts);
-    this.router.get('/user-interactions', KGBAuth('jwt'), this.getUserInteractions);
-    this.router.patch('/comments/:id', KGBAuth('jwt'), this.updateCommentAction);
-    this.router.delete('/comments/:id', KGBAuth('jwt'), this.deleteCommentAction);
+    this.router.post("/rates", KGBAuth("jwt"), this.rateAction);
+    this.router.get("/rates", this.getRates);
+    this.router.post("/hearts", KGBAuth("jwt"), this.heartAction);
+    this.router.post("/comments", KGBAuth("jwt"), this.createCommentAction);
+    this.router.get("/", this.getInteracts);
+    this.router.get("/user-interactions", KGBAuth("jwt"), this.getUserInteractions);
+    this.router.patch("/comments/:id", KGBAuth("jwt"), this.updateCommentAction);
+    this.router.delete("/comments/:id", KGBAuth("jwt"), this.deleteCommentAction);
   }
 
   getRates = async (req: KGBRequest, res: KGBResponse) => {
-    const limit = req.gp<number>('limit', 12, Number);
-    const offset = req.gp<number>('offset', 0, Number);
-    const courseId = req.gp<string>('courseId', undefined, String);
+    const limit = req.gp<number>("limit", 12, Number);
+    const offset = req.gp<number>("offset", 0, Number);
+    const courseId = req.gp<string>("courseId", undefined, String);
     if (!courseId) {
-      throw new HttpException(400, 'courseId is missing');
+      throw new HttpException(400, "courseId is missing");
     }
     const course = await this.prisma.course.findFirst({
       where: { id: courseId },
     });
     if (!course) {
-      throw new NotFoundException('course', courseId);
+      throw new NotFoundException("course", courseId);
     }
     const rates = await this.prisma.rating.findMany({
       where: { courseId },
@@ -39,7 +39,7 @@ export default class InteractController extends BaseController {
       skip: offset,
       include: { user: userSelector },
       orderBy: {
-        updatedAt: 'desc',
+        updatedAt: "desc",
       },
     });
     return res.status(200).json({ rates, avgRate: course.avgRating });
@@ -47,26 +47,26 @@ export default class InteractController extends BaseController {
 
   rateAction = async (req: KGBRequest, res: KGBResponse) => {
     const reqUser = req.user;
-    const courseId = req.gp<string>('courseId', undefined, String);
-    const content = req.gp<string>('content', null, String);
+    const courseId = req.gp<string>("courseId", undefined, String);
+    const content = req.gp<string>("content", null, String);
     if (!courseId) {
-      throw new HttpException(400, 'courseId is missing');
+      throw new HttpException(400, "courseId is missing");
     }
     const course = await this.prisma.course.findFirst({
       where: { id: courseId },
     });
     if (!course) {
-      throw new NotFoundException('course', courseId);
+      throw new NotFoundException("course", courseId);
     }
     const paid = await this.prisma.coursesPaid.findFirst({
       where: { userId: reqUser.id, courseId },
     });
     if (!paid) {
-      throw new HttpException(400, 'You have to buy this course first');
+      throw new HttpException(400, "You have to buy this course first");
     }
     const star = parseFloat(req.body.star);
     if (!star || isNaN(star) || star < 0 || star > 5) {
-      throw new HttpException(400, 'Invalid star');
+      throw new HttpException(400, "Invalid star");
     }
     const existRate = await this.prisma.rating.findFirst({
       where: { userId: reqUser.id, courseId },
@@ -74,11 +74,11 @@ export default class InteractController extends BaseController {
     if (!existRate) {
       const data = {} as any;
       if (content) {
-        data['content'] = content;
+        data["content"] = content;
       }
-      data['star'] = star;
-      data['user'] = { connect: { id: reqUser.id } };
-      data['course'] = { connect: { id: courseId } };
+      data["star"] = star;
+      data["user"] = { connect: { id: reqUser.id } };
+      data["course"] = { connect: { id: courseId } };
       await this.prisma.rating.create({
         data,
       });
@@ -89,9 +89,9 @@ export default class InteractController extends BaseController {
     } else {
       const data = {};
       if (content) {
-        data['content'] = content;
+        data["content"] = content;
       }
-      data['star'] = star;
+      data["star"] = star;
       await this.prisma.rating.updateMany({
         where: { userId: reqUser.id, courseId },
         data,
@@ -133,24 +133,28 @@ export default class InteractController extends BaseController {
   };
 
   getInteracts = async (req: KGBRequest, res: KGBResponse) => {
-    const id = req.gp<string>('id', undefined, String);
-    const limit = req.gp<number>('limit', 10, Number);
-    const offset = req.gp<number>('offset', 0, Number);
-    const targetResource = req.gp<string>('target_resource', undefined, String);
+    const id = req.gp<string>("id", undefined, String);
+    const limit = req.gp<number>("limit", 10, Number);
+    const offset = req.gp<number>("offset", 0, Number);
+    const targetResource = req.gp<string>("target_resource", undefined, String);
     if (!targetResource) {
-      throw new HttpException(400, 'Missing target resource');
+      throw new HttpException(400, "Missing target resource");
     }
-    if (targetResource !== 'lesson' && targetResource !== 'course' && targetResource !== 'message') {
-      throw new HttpException(400, 'Invalid target resource');
+    if (
+      targetResource !== "lesson" &&
+      targetResource !== "course" &&
+      targetResource !== "message"
+    ) {
+      throw new HttpException(400, "Invalid target resource");
     }
     let comments =
-      targetResource !== 'message'
+      targetResource !== "message"
         ? await this.prisma.comment.findMany({
             where: { [targetResource]: { id } },
             include: {
               user: userSelector,
             },
-            orderBy: { createdAt: 'desc' },
+            orderBy: { createdAt: "desc" },
           })
         : [];
     const commentsCount = comments.length;
@@ -162,7 +166,7 @@ export default class InteractController extends BaseController {
       },
     });
     let isHearted = false;
-    const token = req.headers.authorization?.split(' ')[1];
+    const token = req.headers.authorization?.split(" ")[1];
     if (token) {
       const reqUser = await decodeJWT(token);
       if (reqUser) {
@@ -172,17 +176,24 @@ export default class InteractController extends BaseController {
 
     const hearsCount = hears.length;
 
-    if (targetResource === 'course') {
+    if (targetResource === "course") {
       let ratings = await this.prisma.rating.findMany({
         where: { courseId: id },
         include: {
           user: userSelector,
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: { createdAt: "desc" },
       });
       const ratingCount = ratings.length;
       ratings = ratings.slice(offset, offset + limit);
-      return res.status(200).json({ comments, commentsCount, isHearted, hearsCount, ratings, ratingCount });
+      return res.status(200).json({
+        comments,
+        commentsCount,
+        isHearted,
+        hearsCount,
+        ratings,
+        ratingCount,
+      });
     }
 
     return res.status(200).json({ comments, commentsCount, isHearted, hearsCount });
@@ -190,12 +201,12 @@ export default class InteractController extends BaseController {
 
   heartAction = async (req: KGBRequest, res: KGBResponse) => {
     if (!req.body.id) {
-      throw new HttpException(400, 'Missing id');
+      throw new HttpException(400, "Missing id");
     }
-    const id = req.gp<string>('id', undefined, String);
+    const id = req.gp<string>("id", undefined, String);
     const targetResource = req.body.target_resource as string;
     if (!targetResource) {
-      throw new HttpException(400, 'Missing target resource');
+      throw new HttpException(400, "Missing target resource");
     }
     const reqUser = req.user;
     const target = await (this.prisma[targetResource] as any).findFirst({
@@ -231,17 +242,19 @@ export default class InteractController extends BaseController {
 
   createCommentAction = async (req: KGBRequest, res: KGBResponse) => {
     if (!req.body.id) {
-      throw new HttpException(400, 'Missing id');
+      throw new HttpException(400, "Missing id");
     }
-    const id = req.gp<string>('id', undefined, String);
+    const id = req.gp<string>("id", undefined, String);
     const targetResource = req.body.target_resource as string;
     if (!targetResource) {
-      throw new HttpException(400, 'Missing target resource');
+      throw new HttpException(400, "Missing target resource");
     }
 
     const reqUser = req.user;
 
-    const target = await (this.prisma[targetResource] as any).findFirst({ where: { id } });
+    const target = await (this.prisma[targetResource] as any).findFirst({
+      where: { id },
+    });
 
     if (!target) {
       throw new NotFoundException(targetResource, id);
@@ -250,7 +263,7 @@ export default class InteractController extends BaseController {
     const { content, level } = req.body;
 
     if (!content) {
-      throw new HttpException(400, 'Where tf is your comment content');
+      throw new HttpException(400, "Where tf is your comment content");
     }
 
     let comment;
@@ -268,7 +281,7 @@ export default class InteractController extends BaseController {
       const { parentId } = req.body;
 
       if (!(parentId || parentId == 0)) {
-        throw new HttpException(400, 'parentId is missing');
+        throw new HttpException(400, "parentId is missing");
       }
 
       comment = await this.prisma.comment.create({
@@ -281,23 +294,23 @@ export default class InteractController extends BaseController {
         },
       });
     } else {
-      throw new HttpException(400, 'Invalid level');
+      throw new HttpException(400, "Invalid level");
     }
 
     return res.status(200).json(comment);
   };
 
   updateCommentAction = async (req: KGBRequest, res: KGBResponse) => {
-    const id = req.gp<string>('id', undefined, String);
+    const id = req.gp<string>("id", undefined, String);
     const reqUser = req.user;
     const comment = await this.prisma.comment.findFirst({ where: { id } });
 
     if (!comment) {
-      throw new NotFoundException('comment', id);
+      throw new NotFoundException("comment", id);
     }
 
     if (comment.userId !== reqUser.id) {
-      throw new HttpException(401, 'Unauthorized');
+      throw new HttpException(401, "Unauthorized");
     }
 
     const { content } = req.body;
@@ -308,7 +321,7 @@ export default class InteractController extends BaseController {
   };
 
   deleteCommentAction = async (req: KGBRequest, res: KGBResponse) => {
-    const id = req.gp<string>('id', undefined, String);
+    const id = req.gp<string>("id", undefined, String);
     const reqUser = req.user;
 
     const comment = await this.prisma.comment.findFirst({
@@ -317,11 +330,11 @@ export default class InteractController extends BaseController {
     });
 
     if (!comment) {
-      throw new NotFoundException('comment', id);
+      throw new NotFoundException("comment", id);
     }
 
     if (comment.userId !== reqUser.id) {
-      throw new HttpException(401, 'Unauthorized');
+      throw new HttpException(401, "Unauthorized");
     }
 
     if (comment.level === 0) {

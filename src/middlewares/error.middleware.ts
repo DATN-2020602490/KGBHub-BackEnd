@@ -1,5 +1,5 @@
-import { NextFunction } from 'express';
-import { KGBRequest, KGBResponse } from '../global';
+import { NextFunction } from "express";
+import { KGBRequest, KGBResponse } from "../global";
 
 type Res = {
   url?: string;
@@ -11,22 +11,22 @@ type Res = {
 const errorHandler = (error: any, req: KGBRequest, res: KGBResponse, next: NextFunction) => {
   const response: Res = {};
 
-  response.message = 'Unknown error';
+  response.message = "Unknown error";
 
   if (req) {
     response.url = req.originalUrl;
     response.method = req.method;
   }
 
-  if (typeof error === 'object') {
+  if (typeof error === "object") {
     Object.assign(response, error);
-    response.message = error.message || error._message || 'Unknown error';
-  } else if (typeof error === 'string') {
+    response.message = error.message || error._message || "Unknown error";
+  } else if (typeof error === "string") {
     response.message = error;
   }
 
-  if (response.message?.includes('code:')) {
-    const [message, code] = response.message?.split('code:');
+  if (response.message?.includes("code:")) {
+    const [message, code] = response.message?.split("code:");
     response.message = message.trim();
     response.code = code.trim();
   }
@@ -38,6 +38,6 @@ const errorHandler = (error: any, req: KGBRequest, res: KGBResponse, next: NextF
   console.error(error);
 };
 
-process.on('unhandledRejection', errorHandler);
+process.on("unhandledRejection", errorHandler);
 
 export default errorHandler;

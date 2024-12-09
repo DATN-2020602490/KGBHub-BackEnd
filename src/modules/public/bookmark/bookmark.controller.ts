@@ -1,15 +1,15 @@
-import { BaseController } from '../../../abstractions/base.controller';
-import { KGBAuth } from '../../../configs/passport';
-import NotFoundException from '../../../exceptions/not-found';
-import { Bookmark, KGBRequest, KGBResponse, File } from '../../../global';
+import { BaseController } from "../../../abstractions/base.controller";
+import { KGBAuth } from "../../../configs/passport";
+import NotFoundException from "../../../exceptions/not-found";
+import { Bookmark, KGBRequest, KGBResponse, File } from "../../../global";
 
 export default class BookmarkController extends BaseController {
-  public path = '/api/v1-public/bookmarks';
+  public path = "/api/v1-public/bookmarks";
 
   public initializeRoutes() {
-    this.router.get(`/`, KGBAuth('jwt'), this.getBookmarks);
-    this.router.post(`/`, KGBAuth('jwt'), this.addBookmark);
-    this.router.delete(`/:id`, KGBAuth('jwt'), this.removeBookmark);
+    this.router.get(`/`, KGBAuth("jwt"), this.getBookmarks);
+    this.router.post(`/`, KGBAuth("jwt"), this.addBookmark);
+    this.router.delete(`/:id`, KGBAuth("jwt"), this.removeBookmark);
   }
 
   getBookmarks = async (req: KGBRequest, res: KGBResponse) => {
@@ -17,7 +17,7 @@ export default class BookmarkController extends BaseController {
     const userId = reqUser.id;
     const bookmarks = (await this.prisma.bookmark.findMany({
       where: { userId },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
       include: {
         course: { select: { courseName: true, thumbnailFileId: true } },
         lesson: {
@@ -57,13 +57,13 @@ export default class BookmarkController extends BaseController {
         where: { id: courseId },
       });
       if (!course) {
-        throw new NotFoundException('course', courseId);
+        throw new NotFoundException("course", courseId);
       }
       const _ = await this.prisma.bookmark.findFirst({
         where: { courseId, userId },
       });
       if (_) {
-        throw new Error('Bookmark already exists');
+        throw new Error("Bookmark already exists");
       }
       bookmark = await this.prisma.bookmark.create({
         data: {
@@ -76,13 +76,13 @@ export default class BookmarkController extends BaseController {
         where: { id: lessonId },
       });
       if (!lesson) {
-        throw new NotFoundException('lesson', lessonId);
+        throw new NotFoundException("lesson", lessonId);
       }
       const _ = await this.prisma.bookmark.findFirst({
         where: { lessonId, userId },
       });
       if (_) {
-        throw new Error('Bookmark already exists');
+        throw new Error("Bookmark already exists");
       }
       bookmark = await this.prisma.bookmark.create({
         data: {
@@ -91,22 +91,22 @@ export default class BookmarkController extends BaseController {
         },
       });
     } else {
-      throw new Error('Invalid courseId or lessonId provided');
+      throw new Error("Invalid courseId or lessonId provided");
     }
     return res.status(200).json(bookmark);
   };
   removeBookmark = async (req: KGBRequest, res: KGBResponse) => {
     const reqUser = req.user;
     const userId = reqUser.id;
-    const id = req.gp<string>('id', undefined, String);
+    const id = req.gp<string>("id", undefined, String);
     const bookmark = await this.prisma.bookmark.findFirst({
       where: { id },
     });
     if (!bookmark) {
-      throw new NotFoundException('bookmark', id);
+      throw new NotFoundException("bookmark", id);
     }
     if (bookmark.userId !== userId) {
-      throw new Error('Unauthorized');
+      throw new Error("Unauthorized");
     }
     await this.prisma.bookmark.delete({ where: { id } });
     return res.status(200).json(bookmark);

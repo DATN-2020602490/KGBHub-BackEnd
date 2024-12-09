@@ -1,9 +1,9 @@
-import { NextFunction } from 'express';
-import { File, KGBRequest, KGBResponse } from '../global';
-import prisma from '../configs/prisma';
-import getVideoDurationInSeconds from 'get-video-duration';
-import { isArray } from 'lodash';
-import { KGBUploader } from '../configs/multer';
+import { NextFunction } from "express";
+import { File, KGBRequest, KGBResponse } from "../global";
+import prisma from "../configs/prisma";
+import getVideoDurationInSeconds from "get-video-duration";
+import { isArray } from "lodash";
+import { KGBUploader } from "../configs/multer";
 
 // export const processFile = async (req: KGBRequest, res: KGBResponse, next: NextFunction) => {
 //   if (req.file) {
@@ -111,7 +111,10 @@ const createFileModel = async (file: Express.Multer.File, userId: string): Promi
       owner: { connect: { id: userId } },
     },
   });
-  return (await prisma.file.findUnique({ where: { id }, include: { owner: true } })) as File;
+  return (await prisma.file.findUnique({
+    where: { id },
+    include: { owner: true },
+  })) as File;
 };
 
 const processFile = async (req: KGBRequest, res: KGBResponse, next: NextFunction) => {
@@ -125,7 +128,9 @@ const processFile = async (req: KGBRequest, res: KGBResponse, next: NextFunction
       );
     } else {
       const fileModelsWithFieldName: { [fieldname: string]: File[] } = {};
-      for (const key in req.files as { [fieldname: string]: Express.Multer.File[] }) {
+      for (const key in req.files as {
+        [fieldname: string]: Express.Multer.File[];
+      }) {
         fileModelsWithFieldName[key] = await Promise.all(
           (req.files[key] as Express.Multer.File[]).map((file) => createFileModel(file, userId)),
         );
@@ -137,7 +142,8 @@ const processFile = async (req: KGBRequest, res: KGBResponse, next: NextFunction
 };
 
 export const fileMiddleware =
-  (fields: { name: string; maxCount?: number }[]) => (req: KGBRequest, res: KGBResponse, next: NextFunction) => {
+  (fields: { name: string; maxCount?: number }[]) =>
+  (req: KGBRequest, res: KGBResponse, next: NextFunction) => {
     KGBUploader.fields(fields)(req, res, (err) => {
       if (err) {
         return next(err);

@@ -1,34 +1,38 @@
-import { BaseController } from '../../abstractions/base.controller';
-import { CoursesPaid, KGBResponse, ReportTable, userSelector } from '../../global';
-import { KGBAuth } from '../../configs/passport';
-import { KGBRequest } from '../../global';
-import checkRoleMiddleware from '../../middlewares/checkRole.middleware';
-import { RoleEnum, CourseStatus, OrderStatus } from '@prisma/client';
-import { processStarReport } from '../../util/data.util';
-import { groupOrdersByDate, processOrdersReportAuthor } from './report.service';
+import { BaseController } from "../../abstractions/base.controller";
+import { CoursesPaid, KGBResponse, ReportTable, userSelector } from "../../global";
+import { KGBAuth } from "../../configs/passport";
+import { KGBRequest } from "../../global";
+import checkRoleMiddleware from "../../middlewares/checkRole.middleware";
+import { RoleEnum, CourseStatus, OrderStatus } from "@prisma/client";
+import { groupOrdersByDate, processOrdersReportAuthor, processStarReport } from "./report.service";
 
 export default class ReportController extends BaseController {
-  public path = '/api/v1/reports';
+  public path = "/api/v1/reports";
 
   public initializeRoutes() {
-    this.router.get(`/system`, KGBAuth('jwt'), checkRoleMiddleware([RoleEnum.ADMIN]), this.getSystemReport);
+    this.router.get(
+      `/system`,
+      KGBAuth("jwt"),
+      checkRoleMiddleware([RoleEnum.ADMIN]),
+      this.getSystemReport,
+    );
     this.router.get(
       `/author`,
-      KGBAuth('jwt'),
+      KGBAuth("jwt"),
       checkRoleMiddleware([RoleEnum.AUTHOR, RoleEnum.ADMIN]),
       this.getReportByAuthors,
     );
     this.router.get(
       `/courses/stars`,
-      KGBAuth('jwt'),
+      KGBAuth("jwt"),
       checkRoleMiddleware([RoleEnum.AUTHOR]),
       this.getReportByCoursesStar,
     );
   }
   getSystemReport = async (req: KGBRequest, res: KGBResponse) => {
-    const groupBy = req.gp<string>('groupBy', 'day', String);
-    const startDate = req.gp<number>('startDate', 0, Number);
-    const endDate = req.gp<number>('endDate', Date.now(), Number);
+    const groupBy = req.gp<string>("groupBy", "day", String);
+    const startDate = new Date(req.gp<string | Date>("startDate", new Date(0), String));
+    const endDate = new Date(req.gp<string | Date>("endDate", new Date(), String));
 
     const orders = await this.prisma.order.findMany({
       where: {
@@ -40,17 +44,17 @@ export default class ReportController extends BaseController {
       groupBy,
       startDate: new Date(startDate),
       endDate: new Date(endDate),
-      target: 'system',
+      target: "system",
       systemReport: groupOrdersByDate(orders, groupBy),
     } as ReportTable;
     return res.status(200).json(result);
   };
 
   getReportByAuthors = async (req: KGBRequest, res: KGBResponse) => {
-    const groupBy = req.gp<string>('groupBy', 'day', String);
-    const startDate = req.gp<number>('startDate', 0, Number);
-    const endDate = req.gp<number>('endDate', Date.now(), Number);
-    const authorId = req.gp<string>('authorId', req.user.id, Number);
+    const groupBy = req.gp<string>("groupBy", "day", String);
+    const startDate = new Date(req.gp<string | Date>("startDate", new Date(0), String));
+    const endDate = new Date(req.gp<string | Date>("endDate", new Date(), String));
+    const authorId = req.gp<string>("authorId", req.user.id, Number);
     const _ = (await this.prisma.coursesPaid.findMany({
       where: {
         isFree: false,
@@ -65,12 +69,15 @@ export default class ReportController extends BaseController {
       },
       include: { order: true, course: true },
     })) as CoursesPaid[];
-    const author = await this.prisma.user.findFirst({ where: { id: authorId }, ...userSelector });
+    const author = await this.prisma.user.findFirst({
+      where: { id: authorId },
+      ...userSelector,
+    });
     const result = {
       groupBy,
       startDate: new Date(startDate),
       endDate: new Date(endDate),
-      target: 'author',
+      target: "author",
       authorId: authorId,
       author,
       authorReport: processOrdersReportAuthor(_, groupBy),

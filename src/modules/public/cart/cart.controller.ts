@@ -1,18 +1,18 @@
-import { BaseController } from '../../../abstractions/base.controller';
-import { KGBAuth } from '../../../configs/passport';
-import NotFoundException from '../../../exceptions/not-found';
-import HttpException from '../../../exceptions/http-exception';
-import { CourseStatus, OrderStatus } from '@prisma/client';
-import { KGBRequest, KGBResponse } from '../../../global';
+import { BaseController } from "../../../abstractions/base.controller";
+import { KGBAuth } from "../../../configs/passport";
+import NotFoundException from "../../../exceptions/not-found";
+import HttpException from "../../../exceptions/http-exception";
+import { CourseStatus, OrderStatus } from "@prisma/client";
+import { KGBRequest, KGBResponse } from "../../../global";
 
 export default class CartController extends BaseController {
-  public path = '/api/v1-public/carts';
+  public path = "/api/v1-public/carts";
 
   public initializeRoutes() {
-    this.router.get(`/`, KGBAuth('jwt'), this.getCart);
-    this.router.post(`/actions/add`, KGBAuth('jwt'), this.addToCart);
-    this.router.post(`/actions/remove`, KGBAuth('jwt'), this.removeFromCart);
-    this.router.post(`/actions/clear`, KGBAuth('jwt'), this.clearCart);
+    this.router.get(`/`, KGBAuth("jwt"), this.getCart);
+    this.router.post(`/actions/add`, KGBAuth("jwt"), this.addToCart);
+    this.router.post(`/actions/remove`, KGBAuth("jwt"), this.removeFromCart);
+    this.router.post(`/actions/clear`, KGBAuth("jwt"), this.clearCart);
   }
 
   addToCart = async (req: KGBRequest, res: KGBResponse) => {
@@ -21,23 +21,23 @@ export default class CartController extends BaseController {
       where: { userId: reqUser.id },
     });
     if (!cart) {
-      throw new NotFoundException('cart', reqUser.id);
+      throw new NotFoundException("cart", reqUser.id);
     }
-    const courseId = req.gp<string>('courseId', undefined, String);
+    const courseId = req.gp<string>("courseId", undefined, String);
     const course = await this.prisma.course.findFirst({
       where: { id: courseId },
     });
     if (!course) {
-      throw new NotFoundException('course', courseId);
+      throw new NotFoundException("course", courseId);
     }
     if (course.status !== CourseStatus.APPROVED) {
-      throw new HttpException(400, 'Course is not approved');
+      throw new HttpException(400, "Course is not approved");
     }
     const cOC = await this.prisma.coursesOnCarts.findFirst({
       where: { cartId: cart.id, courseId },
     });
     if (cOC) {
-      throw new Error('Course already added to cart');
+      throw new Error("Course already added to cart");
     }
     const isBought = await this.prisma.coursesPaid.findFirst({
       where: {
@@ -48,7 +48,7 @@ export default class CartController extends BaseController {
       include: { order: true },
     });
     if (isBought) {
-      throw new HttpException(400, 'Course already bought');
+      throw new HttpException(400, "Course already bought");
     }
     await this.prisma.coursesOnCarts.create({
       data: {
@@ -68,7 +68,7 @@ export default class CartController extends BaseController {
       where: { userId: reqUser.id },
     });
     if (!cart) {
-      throw new NotFoundException('cart', reqUser.id);
+      throw new NotFoundException("cart", reqUser.id);
     }
     const { courseIds } = req.body;
     for (const __ of courseIds) {
@@ -102,7 +102,7 @@ export default class CartController extends BaseController {
       where: { userId: reqUser.id },
     });
     if (!cart) {
-      throw new NotFoundException('cart', reqUser.id);
+      throw new NotFoundException("cart", reqUser.id);
     }
     await this.prisma.coursesOnCarts.deleteMany({
       where: { cartId: cart.id },
@@ -120,7 +120,7 @@ export default class CartController extends BaseController {
       include: { coursesOnCarts: { include: { course: true } } },
     });
     if (!cart) {
-      throw new NotFoundException('cart', reqUser.id);
+      throw new NotFoundException("cart", reqUser.id);
     }
     return res.status(200).json(cart);
   };

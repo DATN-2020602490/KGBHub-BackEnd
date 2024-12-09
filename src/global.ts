@@ -1,6 +1,6 @@
-import { RemoteSocket, Socket } from 'socket.io';
-import { Request, Response } from 'express';
-import { DefaultEventsMap } from 'socket.io/dist/typed-events';
+import { RemoteSocket, Socket } from "socket.io";
+import { Request, Response } from "express";
+import { DefaultEventsMap } from "socket.io/dist/typed-events";
 import {
   Platform,
   RoleEnum,
@@ -20,7 +20,7 @@ import {
   UserView,
   CampaignType,
   VoucherType,
-} from '@prisma/client';
+} from "@prisma/client";
 
 export type KGBSocket = Socket & AddonUserOnSocket;
 
@@ -61,7 +61,7 @@ export type ReportTable = {
   groupBy: string;
   startDate: number | Date;
   endDate: number | Date;
-  target: 'system' | 'author';
+  target: "system" | "author";
   authorId?: string;
   author: User;
   systemReport?: ReportData;
@@ -78,13 +78,18 @@ export type KGBRequest = Request & {
    *
    * @param key - The key of the request parameter to retrieve.
    * @param defaultValue - The default value to return if the parameter is not found.
-   * @param validate - The validation criteria, which can be a function, an array, a regular expression, or an object.
+   * @param validate - The validation criteria, which can be a function, an array, a regular expression, or an
+   *                  object.
    *
    * @returns The validated and possibly converted value of the parameter. If the parameter is not found,
    *          the default value is returned. Throws an error if the parameter is missing or invalid according
    *          to the validation criteria.
    */
-  gp: <T>(key: string, defaultValue?: T, validate?: ((val: T) => T | undefined) | T[] | RegExp | object) => T | null;
+  gp: <T>(
+    key: string,
+    defaultValue?: T,
+    validate?: ((val: T) => T | undefined) | T[] | RegExp | object,
+  ) => T | null;
 };
 
 export type fileModel = File;
@@ -625,10 +630,6 @@ export type File = {
   filesize: string;
   mimetype: string;
 
-  lessonId?: string;
-
-  attachmentId?: string;
-
   ownerId?: string;
   owner?: User;
 
@@ -660,6 +661,10 @@ export type Attachment = {
 export type Migrate = {
   name: string;
   runAt: Date;
+
+  createdAt: Date;
+  updatedAt: Date;
+  deletedAt?: Date;
 };
 
 export type Campaign = {
@@ -672,6 +677,13 @@ export type Campaign = {
   startAt: Date;
   endAt: Date;
   active: boolean;
+  totalFeeVoucher?: number;
+  feeVoucherValue?: number;
+  totalProductVoucher?: number;
+  productVoucherValue?: number;
+
+  discountFrom?: number;
+  discountTo?: number;
   totalVoucher: number;
   totalUsed: number;
 
@@ -690,7 +702,7 @@ export type CampaignDiscount = {
   campaign: Campaign;
   campaignId: string;
 
-  discount: number;
+  value: number;
 
   courseId: string;
   course: Course;

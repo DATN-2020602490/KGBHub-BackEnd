@@ -1,6 +1,6 @@
-import { CourseStatus, LessonType } from '@prisma/client';
-import prisma from '../../configs/prisma';
-import { userSelector } from '../../global';
+import { CourseStatus, LessonType } from "@prisma/client";
+import prisma from "../../configs/prisma";
+import { userSelector } from "../../global";
 
 export const refreshCourse = async (id: string) => {
   if (!id) {
@@ -107,16 +107,16 @@ export const getCourses = async (
 ) => {
   const where = {};
   if (status) {
-    where['status'] = status;
+    where["status"] = status;
   }
   if (!admin) {
-    where['userId'] = id;
+    where["userId"] = id;
   }
   if (search) {
-    where['courseName'] = {
+    where["courseName"] = {
       contains: search,
     };
-    where['descriptionMD'] = {
+    where["descriptionMD"] = {
       contains: search,
     };
   }
@@ -148,7 +148,7 @@ export const refreshPart = async (courseId: string) => {
   let count = 1;
   const parts = await prisma.part.findMany({
     where: { courseId },
-    orderBy: { partNumber: 'asc' },
+    orderBy: { partNumber: "asc" },
   });
   for (const _ of parts) {
     await prisma.part.update({

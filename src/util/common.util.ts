@@ -1,6 +1,6 @@
 export const generateRandomString = (length = 5) => {
-  const chars = 'AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz1234567890';
-  return Array.from({ length }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+  const chars = "AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz1234567890";
+  return Array.from({ length }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
 };
 
 export const calculateStripeWithFee = (price: number) => {

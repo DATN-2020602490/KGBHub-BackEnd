@@ -1,21 +1,26 @@
-import { BaseController } from '../../abstractions/base.controller';
-import { KGBAuth } from '../../configs/passport';
-import checkRoleMiddleware from '../../middlewares/checkRole.middleware';
-import { KGBResponse } from '../../global';
-import { render } from '@react-email/render';
-import sendEmail from '../../email/process';
-import AcceptForm from '../../email/templates/accept';
-import RejectForm from '../../email/templates/reject';
-import { RoleEnum, FormStatus } from '@prisma/client';
-import { KGBRequest } from '../../global';
+import { BaseController } from "../../abstractions/base.controller";
+import { KGBAuth } from "../../configs/passport";
+import checkRoleMiddleware from "../../middlewares/checkRole.middleware";
+import { KGBResponse } from "../../global";
+import { render } from "@react-email/render";
+import sendEmail from "../../email/process";
+import AcceptForm from "../../email/templates/accept";
+import RejectForm from "../../email/templates/reject";
+import { RoleEnum, FormStatus } from "@prisma/client";
+import { KGBRequest } from "../../global";
 
 export default class FormController extends BaseController {
-  public path = '/api/v1/forms';
+  public path = "/api/v1/forms";
 
   public initializeRoutes() {
-    this.router.get(`/`, KGBAuth('jwt'), checkRoleMiddleware([RoleEnum.ADMIN]), this.getForms);
-    this.router.get(`/:id`, KGBAuth('jwt'), checkRoleMiddleware([RoleEnum.ADMIN]), this.getForm);
-    this.router.patch(`/:id`, KGBAuth('jwt'), checkRoleMiddleware([RoleEnum.ADMIN]), this.updateForm);
+    this.router.get(`/`, KGBAuth("jwt"), checkRoleMiddleware([RoleEnum.ADMIN]), this.getForms);
+    this.router.get(`/:id`, KGBAuth("jwt"), checkRoleMiddleware([RoleEnum.ADMIN]), this.getForm);
+    this.router.patch(
+      `/:id`,
+      KGBAuth("jwt"),
+      checkRoleMiddleware([RoleEnum.ADMIN]),
+      this.updateForm,
+    );
   }
 
   getForms = async (req: KGBRequest, res: KGBResponse) => {
@@ -23,13 +28,13 @@ export default class FormController extends BaseController {
     return res.status(200).json(forms);
   };
   getForm = async (req: KGBRequest, res: KGBResponse) => {
-    const id = req.gp<string>('id', undefined, String);
+    const id = req.gp<string>("id", undefined, String);
     const form = await this.prisma.submitForm.findFirst({ where: { id } });
     return res.status(200).json(form);
   };
   updateForm = async (req: KGBRequest, res: KGBResponse) => {
     const reqUser = req.user;
-    const id = req.gp<string>('id', undefined, String);
+    const id = req.gp<string>("id", undefined, String);
     const status = req.body.status as FormStatus;
     const form = await this.prisma.submitForm.update({
       where: { id },
@@ -55,10 +60,10 @@ export default class FormController extends BaseController {
       }
       const emailHtml = render(
         AcceptForm({
-          userFirstName: reqUser.email.split('@')[0],
+          userFirstName: reqUser.email.split("@")[0],
         }),
       );
-      await sendEmail(emailHtml, form.user.email, 'Your form has been approved');
+      await sendEmail(emailHtml, form.user.email, "Your form has been approved");
     } else {
       const _ = await this.prisma.submitForm.findFirst({
         where: { id },
@@ -78,10 +83,10 @@ export default class FormController extends BaseController {
       }
       const emailHtml = render(
         RejectForm({
-          userFirstName: reqUser.email.split('@')[0],
+          userFirstName: reqUser.email.split("@")[0],
         }),
       );
-      await sendEmail(emailHtml, form.user.email, 'Your form has been rejected');
+      await sendEmail(emailHtml, form.user.email, "Your form has been rejected");
     }
     return res.status(200).json(form);
   };

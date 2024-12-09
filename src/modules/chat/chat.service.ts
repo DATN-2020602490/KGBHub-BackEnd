@@ -1,9 +1,9 @@
-import { ConversationType, ChatMemberRole, MemberStatus } from '@prisma/client';
-import HttpException from '../../exceptions/http-exception';
-import prisma from '../../configs/prisma';
-import IO from '../../socket/io';
-import { User } from '../../global';
-import { getUniqueSuffix } from '../../util/data.util';
+import { ConversationType, ChatMemberRole, MemberStatus } from "@prisma/client";
+import HttpException from "../../exceptions/http-exception";
+import prisma from "../../configs/prisma";
+import IO from "../../socket/io";
+import { User } from "../../global";
+import { getUniqueSuffix } from "../../util/data.util";
 
 export const createChat = async (body: any, reqUser: User, io: IO) => {
   const conversationType = body.conversationType as ConversationType;
@@ -15,13 +15,13 @@ export const createChat = async (body: any, reqUser: User, io: IO) => {
   ) {
     const { userIds } = body;
     if (!userIds) {
-      throw new HttpException(400, 'userIds is required');
+      throw new HttpException(400, "userIds is required");
     }
     if (!Array.isArray(userIds)) {
-      throw new HttpException(400, 'userIds must be an array');
+      throw new HttpException(400, "userIds must be an array");
     }
     if (!userIds.includes(reqUser.id)) {
-      throw new HttpException(403, 'Missing user id in userIds array');
+      throw new HttpException(403, "Missing user id in userIds array");
     }
     if (userIds.length === 2) {
       if (userIds[0] === userIds[1]) {
@@ -62,7 +62,7 @@ export const createChat = async (body: any, reqUser: User, io: IO) => {
           });
           if (isInRoom) {
             const chatList = await io.chatList(s.user.id);
-            s.emit('getChats', chatList);
+            s.emit("getChats", chatList);
           }
         }
         return conversation;
@@ -114,7 +114,7 @@ export const createChat = async (body: any, reqUser: User, io: IO) => {
         });
         if (isInRoom) {
           const chatList = await io.chatList(s.user.id);
-          s.emit('getChats', chatList);
+          s.emit("getChats", chatList);
         }
       }
       return conversation;
@@ -139,7 +139,7 @@ export const createChat = async (body: any, reqUser: User, io: IO) => {
           }
         }
       }
-      const uniqueSuffix = await getUniqueSuffix('roomId', prisma.conversation, 'group_chat_');
+      const uniqueSuffix = await getUniqueSuffix("roomId", prisma.conversation, "group_chat_");
 
       const conversation = await prisma.conversation.create({
         data: {
@@ -179,7 +179,7 @@ export const createChat = async (body: any, reqUser: User, io: IO) => {
         });
         if (isInRoom) {
           const chatList = await io.chatList(s.user.id);
-          s.emit('getChats', chatList);
+          s.emit("getChats", chatList);
         }
       }
       return conversation;

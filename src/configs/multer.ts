@@ -1,19 +1,19 @@
-import multer from 'multer';
-import { createWriteStream, existsSync, mkdirSync, statSync } from 'fs';
-import path from 'path';
-import axios from 'axios';
-import prisma from './prisma';
-import { lookup } from 'mime-types';
+import multer from "multer";
+import { createWriteStream, existsSync, mkdirSync, statSync } from "fs";
+import path from "path";
+import axios from "axios";
+import prisma from "./prisma";
+import { lookup } from "mime-types";
 
 const videoStorage = multer.diskStorage({
   destination: (req, file, cb) => {
-    mkdirSync('uploads/', { recursive: true });
-    cb(null, 'uploads/');
+    mkdirSync("uploads/", { recursive: true });
+    cb(null, "uploads/");
   },
   filename: (req, file, cb) => {
     // Create a unique filename to avoid conflicts
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    const extension = file.mimetype.split('/')[1];
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    const extension = file.mimetype.split("/")[1];
     cb(null, `file-${uniqueSuffix}.${extension}`);
   },
 });
@@ -22,32 +22,39 @@ const KGBUploader = multer({
   storage: videoStorage,
   limits: { fileSize: 1024 * 1024 * 1024 * 3 },
   fileFilter: (req, file, cb: any) => {
-    const allowedMimeTypes = ['image/jpeg', 'image/png', 'video/mp4', 'image/jpg', 'image/gif', 'video/mov'];
+    const allowedMimeTypes = [
+      "image/jpeg",
+      "image/png",
+      "video/mp4",
+      "image/jpg",
+      "image/gif",
+      "video/mov",
+    ];
     if (allowedMimeTypes.includes(file.mimetype)) {
       cb(null, true); // Allow the file
     } else {
-      cb(new Error('Only JPEG, PNG, JPG, GIF images and MP4, MOV videos are allowed!'));
+      cb(new Error("Only JPEG, PNG, JPG, GIF images and MP4, MOV videos are allowed!"));
     }
   },
 });
 
 const downloadImage = async (url: string, userId: string) => {
-  const uploadsDir = './uploads';
+  const uploadsDir = "./uploads";
   if (!existsSync(uploadsDir)) {
     mkdirSync(uploadsDir, { recursive: true });
   }
 
-  const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+  const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
   // const extension = url.split('.').pop().split('?')[0]
-  const extension = 'jpg';
+  const extension = "jpg";
   const filename = `file-${uniqueSuffix}.${extension}`;
   const filepath = path.join(uploadsDir, filename);
 
   try {
     const response = await axios({
       url,
-      method: 'GET',
-      responseType: 'stream',
+      method: "GET",
+      responseType: "stream",
     });
 
     const writer = createWriteStream(filepath);
@@ -55,16 +62,16 @@ const downloadImage = async (url: string, userId: string) => {
     response.data.pipe(writer);
 
     await new Promise((resolve, reject) => {
-      writer.on('finish', resolve);
-      writer.on('error', reject);
+      writer.on("finish", resolve);
+      writer.on("error", reject);
     });
     const mimetype = lookup(filepath);
 
     const data = {
-      fieldname: 'file',
+      fieldname: "file",
       originalname: path.basename(url),
-      encoding: '7bit',
-      mimetype: mimetype || 'application/octet-stream',
+      encoding: "7bit",
+      mimetype: mimetype || "application/octet-stream",
       destination: uploadsDir,
       filename: filename,
       path: filepath,

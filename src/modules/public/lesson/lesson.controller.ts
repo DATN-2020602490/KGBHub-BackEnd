@@ -1,20 +1,20 @@
-import { BaseController } from '../../../abstractions/base.controller';
-import { KGBAuth } from '../../../configs/passport';
-import HttpException from '../../../exceptions/http-exception';
-import NotFoundException from '../../../exceptions/not-found';
-import { LessonStatus, CourseStatus, OrderStatus } from '@prisma/client';
-import { KGBRequest, KGBResponse, userSelector } from '../../../global';
+import { BaseController } from "../../../abstractions/base.controller";
+import { KGBAuth } from "../../../configs/passport";
+import HttpException from "../../../exceptions/http-exception";
+import NotFoundException from "../../../exceptions/not-found";
+import { LessonStatus, CourseStatus, OrderStatus } from "@prisma/client";
+import { KGBRequest, KGBResponse } from "../../../global";
 
 export default class PublicLessonController extends BaseController {
-  public path = '/api/v1-public/lessons';
+  public path = "/api/v1-public/lessons";
 
   public initializeRoutes() {
-    this.router.post(`/actions/done`, KGBAuth('jwt'), this.doneLessonAction);
-    this.router.get(`/:id`, KGBAuth('jwt'), this.getLesson);
+    this.router.post(`/actions/done`, KGBAuth("jwt"), this.doneLessonAction);
+    this.router.get(`/:id`, KGBAuth("jwt"), this.getLesson);
   }
 
   getLesson = async (req: KGBRequest, res: KGBResponse) => {
-    const id = req.gp<string>('id', undefined, String);
+    const id = req.gp<string>("id", undefined, String);
     let lesson: any = await this.prisma.lesson.findFirst({
       where: {
         id,
@@ -24,7 +24,7 @@ export default class PublicLessonController extends BaseController {
       include: { part: { include: { course: true } } },
     });
     if (!lesson) {
-      throw new NotFoundException('lesson', id);
+      throw new NotFoundException("lesson", id);
     }
     lesson = await this.prisma.lesson.findFirst({
       where: { id },
@@ -34,13 +34,13 @@ export default class PublicLessonController extends BaseController {
 
   doneLessonAction = async (req: KGBRequest, res: KGBResponse) => {
     const reqUser = req.user;
-    const lessonId = req.gp<string>('lessonId', undefined, String);
+    const lessonId = req.gp<string>("lessonId", undefined, String);
     const lesson = await this.prisma.lesson.findFirst({
       where: { id: lessonId },
       include: { part: true },
     });
     if (!lesson || lesson.status !== LessonStatus.APPROVED) {
-      throw new NotFoundException('lesson', lessonId);
+      throw new NotFoundException("lesson", lessonId);
     }
     const paid = await this.prisma.coursesPaid.findFirst({
       where: {
@@ -50,7 +50,7 @@ export default class PublicLessonController extends BaseController {
       },
     });
     if (!paid) {
-      throw new HttpException(403, 'You have not paid for this course');
+      throw new HttpException(403, "You have not paid for this course");
     }
     const done = await this.prisma.lessonDone.findFirst({
       where: { lessonId, userId: reqUser.id },

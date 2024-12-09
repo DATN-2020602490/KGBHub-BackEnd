@@ -1,9 +1,9 @@
-import { BaseController } from '../../abstractions/base.controller';
-import { File, KGBResponse, userSelector } from '../../global';
-import { KGBAuth } from '../../configs/passport';
-import NotFoundException from '../../exceptions/not-found';
-import HttpException from '../../exceptions/http-exception';
-import checkRoleMiddleware from '../../middlewares/checkRole.middleware';
+import { BaseController } from "../../abstractions/base.controller";
+import { File, KGBResponse, userSelector } from "../../global";
+import { KGBAuth } from "../../configs/passport";
+import NotFoundException from "../../exceptions/not-found";
+import HttpException from "../../exceptions/http-exception";
+import checkRoleMiddleware from "../../middlewares/checkRole.middleware";
 import {
   RoleEnum,
   Currency,
@@ -13,33 +13,43 @@ import {
   ProductType,
   ConversationType,
   ChatMemberRole,
-} from '@prisma/client';
-import { KGBRequest } from '../../global';
-import stripe from '../../configs/stripe';
-import BigNumber from 'bignumber.js';
-import { fileMiddleware } from '../../middlewares/file.middleware';
-import { deleteCourse, deletePart, getCourse, getCourses, refreshPart } from './course.service';
-import { generateRandomString } from '../../util/common.util';
-import { convert } from 'html-to-text';
-import { isString } from 'lodash';
+} from "@prisma/client";
+import { KGBRequest } from "../../global";
+import stripe from "../../configs/stripe";
+import BigNumber from "bignumber.js";
+import { fileMiddleware } from "../../middlewares/file.middleware";
+import { deleteCourse, deletePart, getCourse, getCourses, refreshPart } from "./course.service";
+import { generateRandomString } from "../../util/common.util";
+import { convert } from "html-to-text";
+import { isString } from "lodash";
 
 export default class CourseController extends BaseController {
-  public path = '/api/v1/courses';
+  public path = "/api/v1/courses";
 
   public initializeRoutes() {
-    this.router.post(`/`, KGBAuth('jwt'), checkRoleMiddleware([RoleEnum.ADMIN, RoleEnum.AUTHOR]), this.createCourse);
-    this.router.get(`/`, KGBAuth('jwt'), this.getCourses);
-    this.router.get(`/:id`, KGBAuth('jwt'), this.getCourse);
-    this.router.patch(`/:id`, KGBAuth('jwt'), fileMiddleware([{ name: 'thumbnail', maxCount: 1 }]), this.updateCourse);
-    this.router.delete(`/:id`, KGBAuth('jwt'), this.deleteCourse);
-    this.router.post(`/:id/parts`, KGBAuth('jwt'), this.createPart);
+    this.router.post(
+      `/`,
+      KGBAuth("jwt"),
+      checkRoleMiddleware([RoleEnum.ADMIN, RoleEnum.AUTHOR]),
+      this.createCourse,
+    );
+    this.router.get(`/`, KGBAuth("jwt"), this.getCourses);
+    this.router.get(`/:id`, KGBAuth("jwt"), this.getCourse);
+    this.router.patch(
+      `/:id`,
+      KGBAuth("jwt"),
+      fileMiddleware([{ name: "thumbnail", maxCount: 1 }]),
+      this.updateCourse,
+    );
+    this.router.delete(`/:id`, KGBAuth("jwt"), this.deleteCourse);
+    this.router.post(`/:id/parts`, KGBAuth("jwt"), this.createPart);
     this.router.get(`/:id/parts`, this.getParts);
-    this.router.get(`/:id/parts/:partId`, KGBAuth('jwt'), this.getPart);
-    this.router.patch(`/:id/parts/:partId`, KGBAuth('jwt'), this.updatePart);
-    this.router.delete(`/:id/parts/:partId`, KGBAuth('jwt'), this.deletePart);
+    this.router.get(`/:id/parts/:partId`, KGBAuth("jwt"), this.getPart);
+    this.router.patch(`/:id/parts/:partId`, KGBAuth("jwt"), this.updatePart);
+    this.router.delete(`/:id/parts/:partId`, KGBAuth("jwt"), this.deletePart);
     this.router.patch(
       `/:id/actions/approve`,
-      KGBAuth('jwt'),
+      KGBAuth("jwt"),
       checkRoleMiddleware([RoleEnum.ADMIN]),
       this.approveCourse,
     );
@@ -67,8 +77,8 @@ export default class CourseController extends BaseController {
         totalLesson: 0,
         totalPart: 0,
         knowledgeGained: [],
-        descriptionMD: '',
-        thumbnailFileId: '0',
+        descriptionMD: "",
+        thumbnailFileId: "0",
         category: CourseCategory.OTHER,
         isPublic: false,
         user: { connect: { id: req.user.id } },
@@ -88,7 +98,7 @@ export default class CourseController extends BaseController {
     res.status(200).json(course);
     const conversation = await this.prisma.conversation.create({
       data: {
-        avatarFileId: '0',
+        avatarFileId: "0",
         roomId: `course-${course.id}`,
         course: { connect: { id: course.id } },
         conversationName: course.courseName,
@@ -108,10 +118,10 @@ export default class CourseController extends BaseController {
     const reqUser = req.user;
     const limit = Number(req.query.limit) || 12;
     const offset = Number(req.query.offset) || 0;
-    const search = req.gp<string>('search', null, String);
-    const orderBy = (req.query.orderBy as string) || 'createdAt';
-    const direction = (req.query.direction as 'asc' | 'desc') || 'desc';
-    const status = req.gp<CourseStatus>('status', null, CourseStatus);
+    const search = req.gp<string>("search", null, String);
+    const orderBy = (req.query.orderBy as string) || "createdAt";
+    const direction = (req.query.direction as "asc" | "desc") || "desc";
+    const status = req.gp<CourseStatus>("status", null, CourseStatus);
     const { courses, total } = await getCourses(
       reqUser.id,
       limit,
@@ -127,20 +137,27 @@ export default class CourseController extends BaseController {
 
   getCourse = async (req: KGBRequest, res: KGBResponse) => {
     const reqUser = req.user;
-    const id = req.gp<string>('id', undefined, String);
-    const course = await getCourse(id, reqUser.id, !!reqUser.roles.find((role) => role.role.name === RoleEnum.ADMIN));
+    const id = req.gp<string>("id", undefined, String);
+    const course = await getCourse(
+      id,
+      reqUser.id,
+      !!reqUser.roles.find((role) => role.role.name === RoleEnum.ADMIN),
+    );
     if (!course) {
-      throw new NotFoundException('course', id);
+      throw new NotFoundException("course", id);
     }
     return res.status(200).json(course);
   };
 
   updateCourse = async (req: KGBRequest, res: KGBResponse) => {
-    const id = req.gp<string>('id', undefined, String);
+    const id = req.gp<string>("id", undefined, String);
     const reqUser = req.user;
-    const course = await this.prisma.course.findFirst({ where: { id }, include: { products: true } });
+    const course = await this.prisma.course.findFirst({
+      where: { id },
+      include: { products: true },
+    });
     if (!course) {
-      throw new NotFoundException('course', id);
+      throw new NotFoundException("course", id);
     }
     let thumbnail: File = null;
     const thumbnailFile = req.fileModelsWithFieldName?.thumbnail
@@ -155,20 +172,27 @@ export default class CourseController extends BaseController {
     } else {
       thumbnail = { id: course.thumbnailFileId } as File;
     }
-    if (!(course?.userId === req.user.id || req.user.roles.find((role) => role.role.name === RoleEnum.ADMIN))) {
-      throw new HttpException(401, 'Access denied');
+    if (
+      !(
+        course?.userId === req.user.id ||
+        req.user.roles.find((role) => role.role.name === RoleEnum.ADMIN)
+      )
+    ) {
+      throw new HttpException(401, "Access denied");
     }
-    const courseName = req.gp<string>('courseName', course.courseName, String);
-    const descriptionMD = req.gp<string>('descriptionMD', course.descriptionMD, String);
-    const category = req.gp<CourseCategory>('category', course.category, CourseCategory);
-    const isPublic = req.gp<string>('isPublic', String(course.isPublic), String) === 'true';
-    const priceAmount = parseFloat(req.gp<string>('priceAmount', String(course.priceAmount), String));
+    const courseName = req.gp<string>("courseName", course.courseName, String);
+    const descriptionMD = req.gp<string>("descriptionMD", course.descriptionMD, String);
+    const category = req.gp<CourseCategory>("category", course.category, CourseCategory);
+    const isPublic = req.gp<string>("isPublic", String(course.isPublic), String) === "true";
+    const priceAmount = parseFloat(
+      req.gp<string>("priceAmount", String(course.priceAmount), String),
+    );
     let knowledgeGained = req.body.knowledgeGained || course.knowledgeGained;
     if (isString(knowledgeGained)) {
       knowledgeGained = JSON.parse(knowledgeGained as string) as string[];
     }
     if (!(courseName && knowledgeGained.length > 0 && descriptionMD && category)) {
-      return new HttpException(400, 'missing required fields');
+      return new HttpException(400, "missing required fields");
     }
 
     const parts = await this.prisma.part.findMany({
@@ -223,13 +247,18 @@ export default class CourseController extends BaseController {
 
   deleteCourse = async (req: KGBRequest, res: KGBResponse) => {
     const reqUser = req.user;
-    const id = req.gp<string>('id', undefined, String);
+    const id = req.gp<string>("id", undefined, String);
     const course = await getCourse(id, reqUser.id);
     if (!course) {
-      throw new NotFoundException('course', id);
+      throw new NotFoundException("course", id);
     }
-    if (!(course.userId === reqUser.id || reqUser.roles.find((role) => role.role.name === RoleEnum.ADMIN))) {
-      throw new HttpException(403, 'Forbidden');
+    if (
+      !(
+        course.userId === reqUser.id ||
+        reqUser.roles.find((role) => role.role.name === RoleEnum.ADMIN)
+      )
+    ) {
+      throw new HttpException(403, "Forbidden");
     }
     await deleteCourse(id);
     return res.status(200).json(course);
@@ -237,26 +266,28 @@ export default class CourseController extends BaseController {
 
   createPart = async (req: KGBRequest, res: KGBResponse) => {
     const reqUser = req.user;
-    const courseId = req.gp<string>('id', undefined, String);
+    const courseId = req.gp<string>("id", undefined, String);
     const partNumber = parseInt(req.body.partNumber);
     const { partName } = req.body;
     if (!partNumber || isNaN(partNumber) || !partName || !courseId) {
-      throw new Error('Missing required fields');
+      throw new Error("Missing required fields");
     }
     const course = await this.prisma.course.findUnique({
       where: { id: courseId },
     });
     if (!course) {
-      throw new NotFoundException('course', courseId);
+      throw new NotFoundException("course", courseId);
     }
-    if (!(course.userId === reqUser.id || reqUser.roles.find((_) => _.role.name === RoleEnum.ADMIN))) {
-      throw new Error('Not authorized');
+    if (
+      !(course.userId === reqUser.id || reqUser.roles.find((_) => _.role.name === RoleEnum.ADMIN))
+    ) {
+      throw new Error("Not authorized");
     }
     const _ = await this.prisma.part.findFirst({
       where: { courseId, partNumber: partNumber },
     });
     if (_) {
-      throw new Error('Part number already exists');
+      throw new Error("Part number already exists");
     }
     const part = await this.prisma.part.create({
       data: {
@@ -271,70 +302,74 @@ export default class CourseController extends BaseController {
   };
 
   getParts = async (req: KGBRequest, res: KGBResponse) => {
-    const courseId = req.gp<string>('id', undefined, String);
+    const courseId = req.gp<string>("id", undefined, String);
     const course = await this.prisma.course.findFirst({
       where: { id: courseId },
     });
     if (!course) {
-      throw new NotFoundException('course', courseId);
+      throw new NotFoundException("course", courseId);
     }
     const parts = await this.prisma.part.findMany({
       where: { courseId },
-      orderBy: { partNumber: 'asc' },
+      orderBy: { partNumber: "asc" },
     });
     return res.status(200).json(parts);
   };
 
   getPart = async (req: KGBRequest, res: KGBResponse) => {
     const reqUser = req.user;
-    const courseId = req.gp<string>('id', undefined, String);
-    const partId = req.gp<string>('partId', undefined, String);
+    const courseId = req.gp<string>("id", undefined, String);
+    const partId = req.gp<string>("partId", undefined, String);
     const course = await this.prisma.course.findFirst({
       where: { id: courseId },
     });
     if (!course) {
-      throw new NotFoundException('course', courseId);
+      throw new NotFoundException("course", courseId);
     }
-    if (!(course.userId === reqUser.id || reqUser.roles.find((_) => _.role.name === RoleEnum.ADMIN))) {
-      throw new Error('Not authorized');
+    if (
+      !(course.userId === reqUser.id || reqUser.roles.find((_) => _.role.name === RoleEnum.ADMIN))
+    ) {
+      throw new Error("Not authorized");
     }
     const part = await this.prisma.part.findFirst({
       where: { courseId, id: partId },
-      orderBy: { partNumber: 'asc' },
+      orderBy: { partNumber: "asc" },
     });
     if (!part) {
-      throw new NotFoundException('part', partId);
+      throw new NotFoundException("part", partId);
     }
     return res.status(200).json(part);
   };
 
   updatePart = async (req: KGBRequest, res: KGBResponse) => {
     const reqUser = req.user;
-    const courseId = req.gp<string>('id', undefined, String);
-    const partId = req.gp<string>('partId', undefined, String);
+    const courseId = req.gp<string>("id", undefined, String);
+    const partId = req.gp<string>("partId", undefined, String);
     const { partName } = req.body;
     let { partNumber } = req.body;
     if (!partName || !courseId || !partId || !partNumber) {
-      throw new Error('Missing required fields');
+      throw new Error("Missing required fields");
     }
-    partNumber = parseInt(partNumber || '-1');
+    partNumber = parseInt(partNumber || "-1");
     if (partNumber < 0) {
-      throw new Error('Invalid part number');
+      throw new Error("Invalid part number");
     }
     const course = await this.prisma.course.findFirst({
       where: { id: courseId },
     });
     if (!course) {
-      throw new NotFoundException('course', courseId);
+      throw new NotFoundException("course", courseId);
     }
-    if (!(course.userId === reqUser.id || reqUser.roles.find((_) => _.role.name === RoleEnum.ADMIN))) {
-      throw new Error('Not authorized');
+    if (
+      !(course.userId === reqUser.id || reqUser.roles.find((_) => _.role.name === RoleEnum.ADMIN))
+    ) {
+      throw new Error("Not authorized");
     }
     const part = await this.prisma.part.findFirst({
       where: { id: partId, courseId },
     });
     if (!part) {
-      throw new NotFoundException('part', partId);
+      throw new NotFoundException("part", partId);
     }
     await this.prisma.part.update({
       where: { id: partId },
@@ -349,22 +384,24 @@ export default class CourseController extends BaseController {
 
   deletePart = async (req: KGBRequest, res: KGBResponse) => {
     const reqUser = req.user;
-    const courseId = req.gp<string>('id', undefined, String);
-    const partId = req.gp<string>('partId', undefined, String);
+    const courseId = req.gp<string>("id", undefined, String);
+    const partId = req.gp<string>("partId", undefined, String);
     const course = await this.prisma.course.findFirst({
       where: { id: courseId },
     });
     if (!course) {
-      throw new NotFoundException('course', courseId);
+      throw new NotFoundException("course", courseId);
     }
-    if (!(course.userId === reqUser.id || reqUser.roles.find((_) => _.role.name === RoleEnum.ADMIN))) {
-      throw new Error('Not authorized');
+    if (
+      !(course.userId === reqUser.id || reqUser.roles.find((_) => _.role.name === RoleEnum.ADMIN))
+    ) {
+      throw new Error("Not authorized");
     }
     const part = await this.prisma.part.findFirst({
       where: { id: partId, courseId },
     });
     if (!part) {
-      throw new NotFoundException('part', partId);
+      throw new NotFoundException("part", partId);
     }
     await deletePart(partId);
     await refreshPart(courseId);
@@ -372,7 +409,7 @@ export default class CourseController extends BaseController {
   };
 
   approveCourse = async (req: KGBRequest, res: KGBResponse) => {
-    const id = req.gp<string>('id', undefined, String);
+    const id = req.gp<string>("id", undefined, String);
     let course = await this.prisma.course.findFirst({
       where: { id },
       include: {
@@ -388,7 +425,7 @@ export default class CourseController extends BaseController {
       },
     });
     if (!course) {
-      throw new NotFoundException('course', id);
+      throw new NotFoundException("course", id);
     }
     for (const part of course.parts) {
       for (const lesson of part.lessons) {

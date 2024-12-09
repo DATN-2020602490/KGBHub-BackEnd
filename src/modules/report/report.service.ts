@@ -1,4 +1,5 @@
-import { CoursesPaid, Order, ReportData } from '../../global';
+import prisma from "../../configs/prisma";
+import { CoursesPaid, Order, ReportData } from "../../global";
 
 export const groupOrdersByDate = (orders: any[], groupBy: string, isSystem = true) => {
   const result = orders.reduce((acc: ReportData, order) => {
@@ -6,8 +7,8 @@ export const groupOrdersByDate = (orders: any[], groupBy: string, isSystem = tru
     if (!acc[dateKey]) {
       acc[dateKey] = { totalOriginalAmount: 0, totalAmount: 0, totalOrder: 0 };
       if (isSystem) {
-        acc[dateKey]['totalFee'] = 0;
-        acc[dateKey]['totalTip'] = 0;
+        acc[dateKey]["totalFee"] = 0;
+        acc[dateKey]["totalTip"] = 0;
       }
     }
     acc[dateKey].totalOrder += 1;
@@ -26,15 +27,15 @@ export const groupOrdersByDate = (orders: any[], groupBy: string, isSystem = tru
   return sortedData;
 };
 
-export const getDateKey = (date: Date, groupBy) => {
-  const isoDate = date.toISOString().split('T')[0];
-  if (groupBy === 'day') {
+export const getDateKey = (date: Date, groupBy: string) => {
+  const isoDate = date.toISOString().split("T")[0];
+  if (groupBy === "day") {
     return isoDate;
   }
-  if (groupBy === 'month') {
+  if (groupBy === "month") {
     return isoDate.slice(0, 7);
   }
-  if (groupBy === 'year') {
+  if (groupBy === "year") {
     return isoDate.slice(0, 4);
   }
   return null;
@@ -46,7 +47,11 @@ export const processOrdersReportAuthor = (coursesPaids: CoursesPaid[], groupBy: 
     const order = {
       updatedAt: coursePaid.order.updatedAt,
     } as Order;
-    const salePrice = findX(coursePaid.course.priceAmount, coursePaid.order.originalAmount, coursePaid.order.amount);
+    const salePrice = findX(
+      coursePaid.course.priceAmount,
+      coursePaid.order.originalAmount,
+      coursePaid.order.amount,
+    );
     order.amount = salePrice;
     order.originalAmount = coursePaid.course.priceAmount;
     orders.push(order);
@@ -54,9 +59,69 @@ export const processOrdersReportAuthor = (coursesPaids: CoursesPaid[], groupBy: 
   return groupOrdersByDate(orders, groupBy, false);
 };
 
-function findX(a, b, y) {
+/**
+ * Solves for x in the equation ax = by, given a, b, and y.
+ *
+ * @param a - The coefficient of x in the equation.
+ * @param b - The coefficient of y in the equation. Must be non-zero.
+ * @param y - The value of y in the equation.
+ * @throws {Error} If b is zero.
+ * @returns The value of x.
+ */
+function findX(a: number, b: number, y: number) {
   if (b === 0) {
-    throw new Error('Division by zero: b cannot be zero.');
+    throw new Error("Division by zero: b cannot be zero.");
   }
   return (a * y) / b;
 }
+
+export const processStarReport = async (data: any) => {
+  const total = {
+    course: { id: -1, name: "Total" },
+    stars: [
+      { star: 1, total: 0 },
+      { star: 2, total: 0 },
+      { star: 3, total: 0 },
+      { star: 4, total: 0 },
+      { star: 5, total: 0 },
+      { avgStar: 0, total: 0 },
+    ],
+  };
+  let totalRate = 0;
+  let totalStar = 0;
+  const result = [] as any[];
+  for (const _ in data) {
+    const course = await prisma.course.findUnique({
+      where: { id: _ },
+    });
+    if (!course) {
+      continue;
+    }
+    if (!course.totalRating || !course.avgRating) {
+      continue;
+    }
+    totalRate += course.totalRating;
+    totalStar += course.avgRating * course.totalRating;
+    result.push({
+      course: {
+        id: course.id,
+        name: course.courseName,
+        thumbnailFileId: course.thumbnailFileId,
+        thumbnailFile: await prisma.file.findFirst({
+          where: { id: course.thumbnailFileId },
+        }),
+      },
+      stars: data[_],
+    });
+    for (const __ of data[_]) {
+      if (!__.star) {
+        continue;
+      }
+      total.stars[__.star - 1].total += __.total;
+    }
+  }
+  total.stars[5].avgStar = totalStar / totalRate;
+  total.stars[5].total = totalRate;
+  result.push(total);
+  return result;
+};

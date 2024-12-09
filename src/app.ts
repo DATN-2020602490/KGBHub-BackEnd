@@ -1,27 +1,28 @@
-import { Server } from 'http';
-import express from 'express';
-import cors from 'cors';
-import IO from './socket/io';
-import { KGBRequest, KGBResponse } from './global';
-import { BaseController } from './abstractions/base.controller';
-import UserController from './modules/user/user.controller';
-import errorMiddleware from './middlewares/error.middleware';
-import rioMiddleware from './middlewares/rio.middleware';
-import AuthController from './modules/auth/auth.controller';
-import StripeController from './modules/stripe/stripe.controller';
-import ChatController from './modules/chat/chat.controller';
-import InteractController from './modules/interact/interact.controller';
-import CourseController from './modules/course/course.controller';
-import FileController from './modules/file/file.controller';
-import FormController from './modules/form/form.controller';
-import LessonController from './modules/lesson/lesson.controller';
-import BookmarkController from './modules/public/bookmark/bookmark.controller';
-import CartController from './modules/public/cart/cart.controller';
-import PublicCourseController from './modules/public/course/course.controller';
-import PublicLessonController from './modules/public/lesson/lesson.controller';
-import ReportController from './modules/report/report.controller';
-import TestController from './modules/test/test.controller';
-import CampaignController from './modules/campaign/campaign.controller';
+import { Server } from "http";
+import express from "express";
+import cors from "cors";
+import IO from "./socket/io";
+import { KGBRequest, KGBResponse } from "./global";
+import { BaseController } from "./abstractions/base.controller";
+import UserController from "./modules/user/user.controller";
+import errorMiddleware from "./middlewares/error.middleware";
+import rioMiddleware from "./middlewares/rio.middleware";
+import AuthController from "./modules/auth/auth.controller";
+import StripeController from "./modules/stripe/stripe.controller";
+import ChatController from "./modules/chat/chat.controller";
+import InteractController from "./modules/interact/interact.controller";
+import CourseController from "./modules/course/course.controller";
+import FileController from "./modules/file/file.controller";
+import FormController from "./modules/form/form.controller";
+import LessonController from "./modules/lesson/lesson.controller";
+import BookmarkController from "./modules/public/bookmark/bookmark.controller";
+import CartController from "./modules/public/cart/cart.controller";
+import PublicCourseController from "./modules/public/course/course.controller";
+import PublicLessonController from "./modules/public/lesson/lesson.controller";
+import ReportController from "./modules/report/report.controller";
+import TestController from "./modules/test/test.controller";
+import CampaignController from "./modules/campaign/campaign.controller";
+import ReportMockController from "./modules/report/report-mock.controller";
 
 class App {
   public app: express.Application;
@@ -52,8 +53,9 @@ class App {
       new BookmarkController(),
       new TestController(),
       new CartController(),
-      new ReportController(),
+      // new ReportController(),
       new CampaignController(),
+      new ReportMockController(),
     ];
 
     this.initializeMiddlewares();
@@ -83,15 +85,15 @@ class App {
 
   private initializeErrorHandling() {
     this.app.use((req: KGBRequest, res: KGBResponse) => {
-      return res.status(404).error('404 Not found');
+      return res.status(404).error("404 Not found");
     });
 
     this.app.use(errorMiddleware);
   }
 
   private initializeControllers() {
-    this.app.get('/', (request, response) => {
-      response.send('Application is running');
+    this.app.get("/", (request, response) => {
+      response.send("Application is running");
     });
 
     this.controllers.forEach((controller) => {

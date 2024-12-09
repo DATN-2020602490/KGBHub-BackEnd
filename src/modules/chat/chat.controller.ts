@@ -1,40 +1,43 @@
-import { BaseController } from '../../abstractions/base.controller';
-import { File, KGBResponse, userSelector } from '../../global';
-import { Attachment, Message, KGBRequest } from '../../global';
-import NotFoundException from '../../exceptions/not-found';
-import HttpException from '../../exceptions/http-exception';
-import { createChat } from './chat.service';
-import { ChatMemberRole, MemberStatus, ConversationType } from '@prisma/client';
-import { fileMiddleware } from '../../middlewares/file.middleware';
-import { KGBAuth } from '../../configs/passport';
+import { BaseController } from "../../abstractions/base.controller";
+import { File, KGBResponse, userSelector } from "../../global";
+import { Attachment, Message, KGBRequest } from "../../global";
+import NotFoundException from "../../exceptions/not-found";
+import HttpException from "../../exceptions/http-exception";
+import { createChat } from "./chat.service";
+import { ChatMemberRole, MemberStatus, ConversationType, CourseStatus } from "@prisma/client";
+import { fileMiddleware } from "../../middlewares/file.middleware";
+import { KGBAuth } from "../../configs/passport";
 export default class ChatController extends BaseController {
-  public path = '/api/v1/chats';
+  public path = "/api/v1/chats";
 
   public initializeRoutes() {
-    this.router.post('/', KGBAuth('jwt'), this.createChat);
-    this.router.get('/', KGBAuth('jwt'), this.getChats);
-    this.router.get('/:id', KGBAuth('jwt'), this.getChat);
-    this.router.patch('/:id', KGBAuth('jwt'), this.updateChat);
-    this.router.get('/message/:id', KGBAuth('jwt'), this.getMessage);
+    this.router.post("/", KGBAuth("jwt"), this.createChat);
+    this.router.get("/", KGBAuth("jwt"), this.getChats);
+    this.router.get("/:id", KGBAuth("jwt"), this.getChat);
+    this.router.patch("/:id", KGBAuth("jwt"), this.updateChat);
+    this.router.get("/message/:id", KGBAuth("jwt"), this.getMessage);
     this.router.post(
-      '/actions/upload-attachments',
-      KGBAuth('jwt'),
-      fileMiddleware([{ name: 'attachments', maxCount: 10 }]),
+      "/actions/upload-attachments",
+      KGBAuth("jwt"),
+      fileMiddleware([{ name: "attachments", maxCount: 10 }]),
       this.uploadAttachments,
     );
-    this.router.post('/actions/join', KGBAuth('jwt'), this.joinChat);
-    this.router.post('/actions/leave', KGBAuth('jwt'), this.leaveChat);
-    this.router.post('/actions/remove', KGBAuth('jwt'), this.removeChat);
-    this.router.post('/actions/add-members', KGBAuth('jwt'), this.addMembers);
-    this.router.post('/toggle/mute', KGBAuth('jwt'), this.toggleMute);
-    this.router.get('/attachments/my-files', KGBAuth('jwt'), this.myFiles);
-    this.router.get('/attachments/shared-files', KGBAuth('jwt'), this.sharedFiles);
+    this.router.post("/actions/join", KGBAuth("jwt"), this.joinChat);
+    this.router.post("/actions/leave", KGBAuth("jwt"), this.leaveChat);
+    this.router.post("/actions/remove", KGBAuth("jwt"), this.removeChat);
+    this.router.post("/actions/add-members", KGBAuth("jwt"), this.addMembers);
+    this.router.post("/toggle/mute", KGBAuth("jwt"), this.toggleMute);
+    this.router.get("/attachments/my-files", KGBAuth("jwt"), this.myFiles);
+    this.router.get("/attachments/shared-files", KGBAuth("jwt"), this.sharedFiles);
   }
   getMessage = async (req: KGBRequest, res: KGBResponse) => {
     const reqUser = req.user;
-    const id = req.gp<string>('id', undefined, String);
+    const id = req.gp<string>("id", undefined, String);
     const message = await this.prisma.message.findFirst({
-      where: { id, chatMembersOnMessages: { some: { chatMember: { userId: reqUser.id } } } },
+      where: {
+        id,
+        chatMembersOnMessages: { some: { chatMember: { userId: reqUser.id } } },
+      },
       include: {
         chatMembersOnMessages: {
           include: {
@@ -58,12 +61,15 @@ export default class ChatController extends BaseController {
   };
   sharedFiles = async (req: KGBRequest, res: KGBResponse) => {
     const reqUser = req.user;
-    const conversationId = req.gp<string>('conversationId', undefined, String);
+    const conversationId = req.gp<string>("conversationId", undefined, String);
     const limit = parseInt(req.query.limit as string) || 10;
     const offset = parseInt(req.query.offset as string) || 0;
     const attachments = (
       (await this.prisma.attachment.findMany({
-        where: { conversationId, conversation: { chatMembers: { some: { userId: reqUser.id } } } },
+        where: {
+          conversationId,
+          conversation: { chatMembers: { some: { userId: reqUser.id } } },
+        },
         take: limit,
         skip: offset,
       })) as Attachment[]
@@ -73,7 +79,7 @@ export default class ChatController extends BaseController {
 
   myFiles = async (req: KGBRequest, res: KGBResponse) => {
     const reqUser = req.user;
-    const conversationId = req.gp<string>('conversationId', undefined, String);
+    const conversationId = req.gp<string>("conversationId", undefined, String);
     const limit = parseInt(req.query.limit as string) || 10;
     const offset = parseInt(req.query.offset as string) || 0;
     const attachments = await this.prisma.attachment.findMany({
@@ -85,7 +91,7 @@ export default class ChatController extends BaseController {
   };
   toggleMute = async (req: KGBRequest, res: KGBResponse) => {
     const reqUser = req.user;
-    const conversationId = req.gp<string>('conversationId', undefined, String);
+    const conversationId = req.gp<string>("conversationId", undefined, String);
     const conversation = await this.prisma.conversation.findFirst({
       where: {
         id: conversationId,
@@ -93,13 +99,13 @@ export default class ChatController extends BaseController {
       },
     });
     if (!conversation) {
-      throw new NotFoundException('conversation', conversationId);
+      throw new NotFoundException("conversation", conversationId);
     }
     const chatMember = await this.prisma.chatMember.findFirst({
       where: { conversationId, userId: reqUser.id },
     });
     if (!chatMember) {
-      throw new NotFoundException('chatMember', conversationId);
+      throw new NotFoundException("chatMember", conversationId);
     }
     await this.prisma.chatMember.update({
       where: { id: chatMember.id },
@@ -138,18 +144,20 @@ export default class ChatController extends BaseController {
 
   addMembers = async (req: KGBRequest, res: KGBResponse) => {
     const reqUser = req.user;
-    const conversationId = req.gp<string>('conversationId', undefined, String);
+    const conversationId = req.gp<string>("conversationId", undefined, String);
     const conversation = await this.prisma.conversation.findFirst({
       where: {
         id: conversationId,
-        chatMembers: { some: { userId: reqUser.id, chatMemberRole: ChatMemberRole.ADMIN } },
+        chatMembers: {
+          some: { userId: reqUser.id, chatMemberRole: ChatMemberRole.ADMIN },
+        },
       },
     });
     if (!conversation) {
-      throw new NotFoundException('conversation', conversationId);
+      throw new NotFoundException("conversation", conversationId);
     }
     if (!req.body.users) {
-      throw new HttpException(400, 'users is required');
+      throw new HttpException(400, "users is required");
     }
     const users = req.body.users;
     const result = [];
@@ -206,15 +214,17 @@ export default class ChatController extends BaseController {
   };
   updateChat = async (req: KGBRequest, res: KGBResponse) => {
     const reqUser = req.user;
-    const conversationId = req.gp<string>('conversationId', undefined, String);
+    const conversationId = req.gp<string>("conversationId", undefined, String);
     const conversation = await this.prisma.conversation.findFirst({
       where: {
         id: conversationId,
-        chatMembers: { some: { userId: reqUser.id, chatMemberRole: ChatMemberRole.ADMIN } },
+        chatMembers: {
+          some: { userId: reqUser.id, chatMemberRole: ChatMemberRole.ADMIN },
+        },
       },
     });
     if (!conversation) {
-      throw new NotFoundException('conversation', conversationId);
+      throw new NotFoundException("conversation", conversationId);
     }
     const conversationName = req.body.conversationName;
     const avatar = req.body.avatarFileId;
@@ -255,27 +265,35 @@ export default class ChatController extends BaseController {
     // }
   };
   removeChat = async (req: KGBRequest, res: KGBResponse) => {
-    const conversationId = req.gp<string>('conversationId', undefined, String);
-    const username = req.gp<string>('username', undefined, String);
-    const user = await this.prisma.user.findFirst({ where: { username: username } });
+    const conversationId = req.gp<string>("conversationId", undefined, String);
+    const username = req.gp<string>("username", undefined, String);
+    const user = await this.prisma.user.findFirst({
+      where: { username: username },
+    });
     if (!user) {
-      throw new NotFoundException('user', username);
+      throw new NotFoundException("user", username);
     }
     const conversation = await this.prisma.conversation.findFirst({
       where: {
         id: conversationId,
-        chatMembers: { some: { userId: req.user.id, chatMemberRole: ChatMemberRole.ADMIN } },
+        chatMembers: {
+          some: { userId: req.user.id, chatMemberRole: ChatMemberRole.ADMIN },
+        },
       },
     });
 
     if (!conversation) {
-      throw new NotFoundException('conversation', conversationId);
+      throw new NotFoundException("conversation", conversationId);
     }
     const chatMember = await this.prisma.chatMember.findFirst({
-      where: { conversationId, userId: user.id, chatMemberRole: ChatMemberRole.MEMBER },
+      where: {
+        conversationId,
+        userId: user.id,
+        chatMemberRole: ChatMemberRole.MEMBER,
+      },
     });
     if (!chatMember) {
-      throw new NotFoundException('chatMember', conversationId);
+      throw new NotFoundException("chatMember", conversationId);
     }
     await this.prisma.chatMember.updateMany({
       where: { userId: user.id, conversationId: conversation.id },
@@ -312,7 +330,7 @@ export default class ChatController extends BaseController {
   };
   leaveChat = async (req: KGBRequest, res: KGBResponse) => {
     const reqUser = req.user;
-    const conversationId = req.gp<string>('conversationId', undefined, String);
+    const conversationId = req.gp<string>("conversationId", undefined, String);
     const conversation = await this.prisma.conversation.findFirst({
       where: {
         id: conversationId,
@@ -320,16 +338,16 @@ export default class ChatController extends BaseController {
       },
     });
     if (!conversation) {
-      throw new NotFoundException('conversation', conversationId);
+      throw new NotFoundException("conversation", conversationId);
     }
     if (conversation.conversationType !== ConversationType.COURSE_GROUP_CHAT) {
-      throw new HttpException(400, 'You are not allowed to leave this conversation');
+      throw new HttpException(400, "You are not allowed to leave this conversation");
     }
     const chatMember = await this.prisma.chatMember.findFirst({
       where: { conversationId, userId: reqUser.id },
     });
     if (!chatMember) {
-      throw new NotFoundException('chatMember', conversationId);
+      throw new NotFoundException("chatMember", conversationId);
     }
     await this.prisma.chatMember.updateMany({
       where: { conversationId, userId: reqUser.id },
@@ -366,7 +384,7 @@ export default class ChatController extends BaseController {
   };
   joinChat = async (req: KGBRequest, res: KGBResponse) => {
     const reqUser = req.user;
-    const conversationId = req.gp<string>('conversationId', undefined, String);
+    const conversationId = req.gp<string>("conversationId", undefined, String);
     const conversation = await this.prisma.conversation.findFirst({
       where: {
         id: conversationId,
@@ -374,10 +392,10 @@ export default class ChatController extends BaseController {
       },
     });
     if (conversation) {
-      throw new HttpException(400, 'You are already a member of this conversation');
+      throw new HttpException(400, "You are already a member of this conversation");
     }
     if (conversation.conversationType !== ConversationType.COURSE_GROUP_CHAT) {
-      throw new HttpException(400, 'You are not allowed to join this conversation');
+      throw new HttpException(400, "You are not allowed to join this conversation");
     }
     const chatMember = await this.prisma.chatMember.create({
       data: {
@@ -441,16 +459,33 @@ export default class ChatController extends BaseController {
     });
     const _ = [] as any[];
     for (const chat of chats) {
-      if (chat.chatMembers.find((_) => _.userId === reqUser.id && _.status === MemberStatus.PENDING)) {
-        _.push({ conversation: { ...chat, unreadMessages: 0 }, lastMessage: null });
+      if (chat.courseId) {
+        if (
+          !(await this.prisma.course.findFirst({
+            where: { id: chat.courseId, status: CourseStatus.APPROVED },
+          }))
+        ) {
+          continue;
+        }
+      }
+      if (
+        chat.chatMembers.find((_) => _.userId === reqUser.id && _.status === MemberStatus.PENDING)
+      ) {
+        _.push({
+          conversation: { ...chat, unreadMessages: 0 },
+          lastMessage: null,
+        });
         continue;
       }
       const unreadMessages = await this.prisma.chatMembersOnMessages.count({
-        where: { chatMember: { conversationId: chat.id, userId: reqUser.id }, read: false },
+        where: {
+          chatMember: { conversationId: chat.id, userId: reqUser.id },
+          read: false,
+        },
       });
       const lastMessage = (await this.prisma.message.findFirst({
         where: { conversationId: chat.id },
-        orderBy: { createdAt: 'desc' },
+        orderBy: { createdAt: "desc" },
         include: {
           chatMembersOnMessages: {
             include: {
@@ -466,12 +501,17 @@ export default class ChatController extends BaseController {
       if (lastMessage) {
         lastMessage.seenByAll = lastMessage.chatMembersOnMessages.every((_) => _.read);
       }
-      _.push({ conversation: { ...chat, unreadMessages }, lastMessage: lastMessage });
+      _.push({
+        conversation: { ...chat, unreadMessages },
+        lastMessage: lastMessage,
+      });
     }
     const noLastMessage = _.filter((_) => !_.lastMessage);
     const hasLastMessage = _.filter((_) => _.lastMessage);
     const hasLastMessageSorted = hasLastMessage.sort((a, b) => {
-      return new Date(b.lastMessage.updatedAt).getTime() - new Date(a.lastMessage.updatedAt).getTime();
+      return (
+        new Date(b.lastMessage.updatedAt).getTime() - new Date(a.lastMessage.updatedAt).getTime()
+      );
     });
     return res.status(200).json([...hasLastMessageSorted, ...noLastMessage]);
   };
@@ -479,7 +519,7 @@ export default class ChatController extends BaseController {
     const limit = parseInt(req.query.limit as string) || 10;
     const offset = parseInt(req.query.offset as string) || 0;
     const reqUser = req.user;
-    const id = req.gp<string>('id', undefined, String);
+    const id = req.gp<string>("id", undefined, String);
     const chat = await this.prisma.conversation.findFirst({
       where: {
         id,
@@ -496,7 +536,7 @@ export default class ChatController extends BaseController {
       },
     });
     if (!chat) {
-      throw new NotFoundException('chat', id);
+      throw new NotFoundException("chat", id);
     }
     const messages = await this.prisma.message.findMany({
       where: { conversationId: chat.id },
@@ -520,23 +560,27 @@ export default class ChatController extends BaseController {
         },
         targetMessage: true,
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: "desc" },
     });
-    const mgses = await this.prisma.message.findMany({ where: { conversationId: chat.id } });
+    const mgses = await this.prisma.message.findMany({
+      where: { conversationId: chat.id },
+    });
     return res.status(200).json({ chat, messages, remaining: mgses.length > offset + limit });
   };
   uploadAttachments = async (req: KGBRequest, res: KGBResponse) => {
     const reqUser = req.user;
     const attachments: File[] = req.fileModelsWithFieldName?.attachments;
-    const conversationId = req.gp<string>('conversationId', undefined, String);
+    const conversationId = req.gp<string>("conversationId", undefined, String);
     const conversation = await this.prisma.conversation.findFirst({
       where: {
         id: conversationId,
-        chatMembers: { some: { userId: reqUser.id, status: MemberStatus.ACTIVE } },
+        chatMembers: {
+          some: { userId: reqUser.id, status: MemberStatus.ACTIVE },
+        },
       },
     });
     if (!conversation) {
-      throw new NotFoundException('conversation', conversationId);
+      throw new NotFoundException("conversation", conversationId);
     }
     const _ = [] as any[];
     for (const attachment of attachments) {

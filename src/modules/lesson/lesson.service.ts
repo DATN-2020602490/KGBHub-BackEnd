@@ -1,7 +1,6 @@
-import { LessonStatus } from '@prisma/client';
-import prisma from '../../configs/prisma';
-import { userSelector } from '../../global';
-import { refreshCourse } from '../course/course.service';
+import { LessonStatus } from "@prisma/client";
+import prisma from "../../configs/prisma";
+import { refreshCourse } from "../course/course.service";
 
 export const getLesson = async (id: string, userId: string, requireParentId = true) => {
   const lesson = await prisma.lesson.findFirst({
@@ -12,22 +11,27 @@ export const getLesson = async (id: string, userId: string, requireParentId = tr
       where: { parts: { some: { lessons: { some: { id } } } } },
     });
     if (course) {
-      lesson['courseId'] = course.id;
+      lesson["courseId"] = course.id;
       const part = await prisma.part.findFirst({
         where: { course: { id: course.id }, lessons: { some: { id } } },
       });
       if (part) {
-        lesson['partId'] = part.id;
+        lesson["partId"] = part.id;
       }
     }
   }
   return lesson;
 };
-export const getLessons = async (id: string, limit: number, offset: number, status: LessonStatus) => {
+export const getLessons = async (
+  id: string,
+  limit: number,
+  offset: number,
+  status: LessonStatus,
+) => {
   const where = {};
-  where['userId'] = id;
+  where["userId"] = id;
   if (status) {
-    where['status'] = status;
+    where["status"] = status;
   }
   const lessons = await prisma.lesson.findMany({
     where,

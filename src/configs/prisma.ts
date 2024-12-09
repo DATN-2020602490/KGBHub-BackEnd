@@ -3,6 +3,6 @@
  * for a long-running application
  */
 
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from "@prisma/client";
 
 export default new PrismaClient();

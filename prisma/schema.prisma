@@ -250,9 +250,9 @@ model CoursesOnCarts {
   cart   Cart   @relation(fields: [cartId], references: [id])
   cartId String
 
-    createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
-  deletedAt      DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
 }
 
 model Part {
@@ -477,7 +477,7 @@ model Order {
   stripeSubscriptionId String?
 
   originalAmount Float @default(0)
-  originalFee Float @default(0)
+  originalFee    Float @default(0)
 
   coursesPaids CoursesPaid[]
 
@@ -614,10 +614,6 @@ model File {
   filesize     String
   mimetype     String
 
-  lessonId String?
-
-  attachmentId String?
-
   ownerId String
   owner   User   @relation(fields: [ownerId], references: [id])
 
@@ -670,6 +666,14 @@ model Campaign {
   endAt       DateTime
   vouchers    Voucher[]
 
+  totalFeeVoucher     Int?
+  feeVoucherValue     Float?
+  totalProductVoucher Int?
+  productVoucherValue Float?
+
+  discountFrom Float?
+  discountTo   Float?
+
   totalVoucher Int
   totalUsed    Int
 
@@ -689,7 +693,7 @@ model CampaignDiscount {
   campaign   Campaign @relation(fields: [campaignId], references: [id])
   campaignId String
 
-  discount Float
+  value Float
 
   courseId String
   course   Course @relation(fields: [courseId], references: [id])
@@ -711,7 +715,7 @@ model CampaignUser {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
-  vouchers   Voucher[]
+  vouchers  Voucher[]
 }
 
 enum VoucherType {
