@@ -35,9 +35,7 @@ export default (req: KGBRequest, res: KGBResponse, next: NextFunction) => {
         req.params.email = normalizeEmail(req.params.email as string);
       }
     }
-    let value = [req.body[key], req.query[key], req.params[key], defaultValue].find(
-      (v) => v !== undefined,
-    );
+    let value = [req.body[key], req.query[key], req.params[key], defaultValue].find((v) => v !== undefined);
     check(value !== undefined, `Missing param: ${key} code:missing_param`);
 
     if (value === defaultValue) {

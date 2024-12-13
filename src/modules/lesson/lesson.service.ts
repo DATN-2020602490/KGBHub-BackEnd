@@ -22,12 +22,7 @@ export const getLesson = async (id: string, userId: string, requireParentId = tr
   }
   return lesson;
 };
-export const getLessons = async (
-  id: string,
-  limit: number,
-  offset: number,
-  status: LessonStatus,
-) => {
+export const getLessons = async (id: string, limit: number, offset: number, status: LessonStatus) => {
   const where = {};
   where["userId"] = id;
   if (status) {

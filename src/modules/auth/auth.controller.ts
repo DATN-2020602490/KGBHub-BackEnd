@@ -16,11 +16,7 @@ import { getUniqueSuffix, normalizeEmail } from "../../util/data.util";
 export default class AuthController extends BaseController {
   public path = "/api/v1/auth";
 
-  private client: OAuth2Client = new OAuth2Client(
-    process.env.CLIENT_ID,
-    process.env.CLIENT_SECRET,
-    "postmessage",
-  );
+  private client: OAuth2Client = new OAuth2Client(process.env.CLIENT_ID, process.env.CLIENT_SECRET, "postmessage");
 
   public initializeRoutes() {
     this.router.get("/", KGBAuth("google", { scope: ["profile", "email"] }));

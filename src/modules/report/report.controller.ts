@@ -4,18 +4,13 @@ import { KGBAuth } from "../../configs/passport";
 import { KGBRequest } from "../../global";
 import checkRoleMiddleware from "../../middlewares/checkRole.middleware";
 import { RoleEnum, CourseStatus, OrderStatus } from "@prisma/client";
-import { groupOrdersByDate, processOrdersReportAuthor, processStarReport } from "./report.service";
+import { groupOrdersByDate, processOrdersReportAuthor } from "./report.service";
 
 export default class ReportController extends BaseController {
   public path = "/api/v1/reports";
 
   public initializeRoutes() {
-    this.router.get(
-      `/system`,
-      KGBAuth("jwt"),
-      checkRoleMiddleware([RoleEnum.ADMIN]),
-      this.getSystemReport,
-    );
+    this.router.get(`/system`, KGBAuth("jwt"), checkRoleMiddleware([RoleEnum.ADMIN]), this.getSystemReport);
     this.router.get(
       `/author`,
       KGBAuth("jwt"),
@@ -111,6 +106,42 @@ export default class ReportController extends BaseController {
       acc[star.courseId][5].avgStar = star.course.avgRating;
       return acc;
     }, {});
-    return res.status(200).json(await processStarReport(result));
+    const total = {
+      course: { id: -1, name: "Total" },
+      stars: [
+        { star: 1, total: 0 },
+        { star: 2, total: 0 },
+        { star: 3, total: 0 },
+        { star: 4, total: 0 },
+        { star: 5, total: 0 },
+        { avgStar: 0, total: 0 },
+      ],
+    };
+    let totalRate = 0;
+    let totalStar = 0;
+    const _result = [] as any[];
+    for (const _ in result) {
+      const course = stars.find((item) => item.courseId === _).course;
+      totalRate += course.totalRating;
+      totalStar += course.avgRating * course.totalRating;
+      _result.push({
+        course: {
+          id: course.id,
+          name: course.courseName,
+          thumbnailFileId: course.thumbnailFileId,
+        },
+        stars: result[_],
+      });
+      for (const __ of result[_]) {
+        if (!__.star) {
+          continue;
+        }
+        total.stars[__.star - 1].total += __.total;
+      }
+    }
+    total.stars[5].avgStar = totalStar / totalRate;
+    total.stars[5].total = totalRate;
+    _result.push(total);
+    return res.status(200).json(_result);
   };
 }

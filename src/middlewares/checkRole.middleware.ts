@@ -13,9 +13,7 @@ function checkRoleMiddleware(roles: RoleEnum[]) {
         return res.status(401).json({ msg: "Access denied" });
       }
       const userRoles = req.user.roles;
-      const authorized = userRoles.some((userRole) =>
-        roles.some((role) => role === userRole.role.name),
-      );
+      const authorized = userRoles.some((userRole) => roles.some((role) => role === userRole.role.name));
 
       if (!authorized) {
         return next(new Error("Access denied"));

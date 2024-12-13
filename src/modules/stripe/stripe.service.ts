@@ -154,11 +154,7 @@ export const updateOrderStatus = async (io: IO) => {
   }
 };
 
-export const getPriceForTip = async (
-  amount: BigNumber,
-  tipPercent: number,
-  currency = Currency.USD,
-) => {
+export const getPriceForTip = async (amount: BigNumber, tipPercent: number, currency = Currency.USD) => {
   amount = BigNumber(amount.toFixed(2)).times(tipPercent / 100);
   let tipProduct = await prisma.product.findFirst({
     where: {
@@ -271,19 +267,13 @@ export const getPlatformFee = async (
 //   },
 // ]
 
-export const getPriceIdInProduct = async (
-  productStripeId: string,
-  amount: BigNumber,
-  currency = Currency.USD,
-) => {
+export const getPriceIdInProduct = async (productStripeId: string, amount: BigNumber, currency = Currency.USD) => {
   const product = await stripe.products.retrieve(productStripeId);
   if (!product) {
     return null;
   }
   const prices = (await stripe.prices.list({ product: product.id })).data;
-  const price = prices.find((p) =>
-    BigNumber(p.unit_amount).isEqualTo(amount.times(100).toNumber()),
-  );
+  const price = prices.find((p) => BigNumber(p.unit_amount).isEqualTo(amount.times(100).toNumber()));
   if (!price) {
     const newPrice = await stripe.prices.create({
       product: product.id,
@@ -295,12 +285,7 @@ export const getPriceIdInProduct = async (
   return price;
 };
 
-export const createLineItems = async (
-  userId: string,
-  courseIds: string[],
-  tipPercent: number,
-  code?: string,
-) => {
+export const createLineItems = async (userId: string, courseIds: string[], tipPercent: number, code?: string) => {
   const line_items = [];
   let voucher: Voucher = null;
   if (code) {
@@ -342,10 +327,7 @@ export const createLineItems = async (
     });
     let isDiscountFromCampaign = false;
     if (campaignDiscount) {
-      if (
-        campaignDiscount.campaign.startAt > new Date() ||
-        campaignDiscount.campaign.endAt < new Date()
-      ) {
+      if (campaignDiscount.campaign.startAt > new Date() || campaignDiscount.campaign.endAt < new Date()) {
         if (
           await prisma.campaignUser.findFirst({
             where: { campaignId: campaignDiscount.campaignId, userId },

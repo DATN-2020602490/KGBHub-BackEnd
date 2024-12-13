@@ -142,8 +142,7 @@ const processFile = async (req: KGBRequest, res: KGBResponse, next: NextFunction
 };
 
 export const fileMiddleware =
-  (fields: { name: string; maxCount?: number }[]) =>
-  (req: KGBRequest, res: KGBResponse, next: NextFunction) => {
+  (fields: { name: string; maxCount?: number }[]) => (req: KGBRequest, res: KGBResponse, next: NextFunction) => {
     KGBUploader.fields(fields)(req, res, (err) => {
       if (err) {
         return next(err);

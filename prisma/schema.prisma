@@ -625,7 +625,9 @@ model File {
 model Attachment {
   id String @id @default(uuid())
 
-  fileId String?
+  fileId       String?
+  mimetype     String?
+  originalName String?
 
   userId String?
   user   User?   @relation(fields: [userId], references: [id])

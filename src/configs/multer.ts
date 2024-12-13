@@ -22,19 +22,21 @@ const KGBUploader = multer({
   storage: videoStorage,
   limits: { fileSize: 1024 * 1024 * 1024 * 3 },
   fileFilter: (req, file, cb: any) => {
-    const allowedMimeTypes = [
-      "image/jpeg",
-      "image/png",
-      "video/mp4",
-      "image/jpg",
-      "image/gif",
-      "video/mov",
-    ];
-    if (allowedMimeTypes.includes(file.mimetype)) {
-      cb(null, true); // Allow the file
-    } else {
-      cb(new Error("Only JPEG, PNG, JPG, GIF images and MP4, MOV videos are allowed!"));
-    }
+    // const allowedMimeTypes = [
+    //   "image/jpeg",
+    //   "image/png",
+    //   "video/mp4",
+    //   "image/jpg",
+    //   "image/gif",
+    //   "video/mov",
+    // ];
+    // if (allowedMimeTypes.includes(file.mimetype)) {
+    //   cb(null, true); // Allow the file
+    // } else {
+    //   cb(new Error("Only JPEG, PNG, JPG, GIF images and MP4, MOV videos are allowed!"));
+    // }
+
+    cb(null, true);
   },
 });
 

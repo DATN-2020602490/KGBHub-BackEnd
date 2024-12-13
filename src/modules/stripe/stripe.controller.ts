@@ -69,8 +69,12 @@ export default class StripeController extends BaseController {
       throw new HttpException(400, "Course already paid");
     }
     const tipPercent = req.gp<number>("tipPercent", 0, Number);
-    const { line_items, platformFee, tip, totalAmount, originalAmount, originalFee } =
-      await createLineItems(req.user.id, ids, tipPercent, code);
+    const { line_items, platformFee, tip, totalAmount, originalAmount, originalFee } = await createLineItems(
+      req.user.id,
+      ids,
+      tipPercent,
+      code,
+    );
     const success_url = req.gp<string>("successUrl", process.env.PUBLIC_URL, String);
     const checkout = await stripe.checkout.sessions.create({
       line_items,
@@ -124,8 +128,12 @@ export default class StripeController extends BaseController {
       throw new HttpException(400, "Courses already paid");
     }
     const tipPercent = req.gp<number>("tipPercent", 0, Number);
-    const { line_items, platformFee, tip, totalAmount, originalAmount, originalFee } =
-      await createLineItems(req.user.id, courseIds, tipPercent, code);
+    const { line_items, platformFee, tip, totalAmount, originalAmount, originalFee } = await createLineItems(
+      req.user.id,
+      courseIds,
+      tipPercent,
+      code,
+    );
     const success_url = req.gp<string>("successUrl", process.env.PUBLIC_URL, String);
     const checkout = await stripe.checkout.sessions.create({
       line_items,

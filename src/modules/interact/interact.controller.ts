@@ -42,7 +42,20 @@ export default class InteractController extends BaseController {
         updatedAt: "desc",
       },
     });
-    return res.status(200).json({ rates, avgRate: course.avgRating });
+    const general = {
+      1: 0,
+      2: 0,
+      3: 0,
+      4: 0,
+      5: 0,
+    };
+    const _rates = await this.prisma.rating.findMany({
+      where: { courseId },
+    });
+    for (const rate of _rates) {
+      general[rate.star] += 1;
+    }
+    return res.status(200).json({ rates, avgRate: course.avgRating, general, totalRated: _rates.length });
   };
 
   rateAction = async (req: KGBRequest, res: KGBResponse) => {
@@ -140,11 +153,7 @@ export default class InteractController extends BaseController {
     if (!targetResource) {
       throw new HttpException(400, "Missing target resource");
     }
-    if (
-      targetResource !== "lesson" &&
-      targetResource !== "course" &&
-      targetResource !== "message"
-    ) {
+    if (targetResource !== "lesson" && targetResource !== "course" && targetResource !== "message") {
       throw new HttpException(400, "Invalid target resource");
     }
     let comments =

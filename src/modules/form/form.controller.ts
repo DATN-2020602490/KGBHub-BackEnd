@@ -15,12 +15,7 @@ export default class FormController extends BaseController {
   public initializeRoutes() {
     this.router.get(`/`, KGBAuth("jwt"), checkRoleMiddleware([RoleEnum.ADMIN]), this.getForms);
     this.router.get(`/:id`, KGBAuth("jwt"), checkRoleMiddleware([RoleEnum.ADMIN]), this.getForm);
-    this.router.patch(
-      `/:id`,
-      KGBAuth("jwt"),
-      checkRoleMiddleware([RoleEnum.ADMIN]),
-      this.updateForm,
-    );
+    this.router.patch(`/:id`, KGBAuth("jwt"), checkRoleMiddleware([RoleEnum.ADMIN]), this.updateForm);
   }
 
   getForms = async (req: KGBRequest, res: KGBResponse) => {

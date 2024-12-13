@@ -176,11 +176,7 @@ export default class CampaignController extends BaseController {
         },
       });
     } else {
-      let courseIds = req.gp<{ id: string; discount: number }[] | string>(
-        "courseIds",
-        "[]",
-        JSON.parse,
-      );
+      let courseIds = req.gp<{ id: string; discount: number }[] | string>("courseIds", "[]", JSON.parse);
       if (isString(courseIds)) {
         courseIds = JSON.parse(courseIds) as { id: string; discount: number }[];
       }
@@ -292,8 +288,7 @@ export default class CampaignController extends BaseController {
       if (campaign.campaignUsers.length >= campaign.totalVoucher) {
         return res.status(404).json({ message: "No voucher left" });
       }
-      const randomVoucherType =
-        Math.random() > 0.5 ? VoucherType.FEE_PERCENTAGE : VoucherType.PRODUCT_PERCENTAGE;
+      const randomVoucherType = Math.random() > 0.5 ? VoucherType.FEE_PERCENTAGE : VoucherType.PRODUCT_PERCENTAGE;
       let remainingVoucher = await this.prisma.voucher.findFirst({
         where: { campaignId, type: randomVoucherType, campaignUserId: null },
       });

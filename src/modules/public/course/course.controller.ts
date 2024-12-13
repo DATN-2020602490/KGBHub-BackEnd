@@ -30,7 +30,6 @@ export default class PublicCourseController extends BaseController {
         isPublic: true,
         status: CourseStatus.APPROVED,
       },
-
       orderBy: [
         {
           [orderBy]: direction,
@@ -56,8 +55,8 @@ export default class PublicCourseController extends BaseController {
         throw new HttpException(403, "Forbidden");
       }
       query.where.userId = reqUser.id;
-      query.where.isPublic = undefined;
-      query.where.status = undefined;
+      delete query.where.isPublic;
+      delete query.where.status;
     }
     if (search) {
       query.where.OR = [
@@ -116,9 +115,7 @@ export default class PublicCourseController extends BaseController {
       bestSellerCourses = courses.slice(offset, offset + limit);
     }
     for (const course of courses) {
-      const totalBought = course.coursesPaid.filter(
-        (cp) => cp.order.status === OrderStatus.SUCCESS,
-      ).length;
+      const totalBought = course.coursesPaid.filter((cp) => cp.order.status === OrderStatus.SUCCESS).length;
       course["totalBought"] = totalBought;
       if (req.user) {
         const [isHearted, isBought, lessonDones, rating] = await Promise.all([
@@ -158,9 +155,7 @@ export default class PublicCourseController extends BaseController {
         course["isHearted"] = !!isHearted;
         course["isBought"] = !!isBought;
         course["currentLessonId"] = lessonDones[0]?.lessonId;
-        course["process"] = lessonDones.length
-          ? Math.floor((lessonDones.length / course.totalLesson) * 100)
-          : 0;
+        course["process"] = lessonDones.length ? Math.floor((lessonDones.length / course.totalLesson) * 100) : 0;
         course["myRating"] = rating;
       }
     }
@@ -197,9 +192,7 @@ export default class PublicCourseController extends BaseController {
     if (!course) {
       throw new NotFoundException("course", id);
     }
-    course["totalBought"] = course.coursesPaid.filter(
-      (cp) => cp.order.status === OrderStatus.SUCCESS,
-    ).length;
+    course["totalBought"] = course.coursesPaid.filter((cp) => cp.order.status === OrderStatus.SUCCESS).length;
 
     if (req.user) {
       const [isHearted, isBought, lessonDones, rating] = await Promise.all([
@@ -239,9 +232,7 @@ export default class PublicCourseController extends BaseController {
       course["isHearted"] = !!isHearted;
       course["isBought"] = !!isBought;
       course["currentLessonId"] = lessonDones[0]?.lessonId;
-      course["process"] = lessonDones.length
-        ? Math.floor((lessonDones.length / course.totalLesson) * 100)
-        : 0;
+      course["process"] = lessonDones.length ? Math.floor((lessonDones.length / course.totalLesson) * 100) : 0;
       course["myRating"] = rating;
     }
     return res.status(200).json(course);

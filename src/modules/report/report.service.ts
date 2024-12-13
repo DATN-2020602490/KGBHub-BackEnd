@@ -1,4 +1,3 @@
-import prisma from "../../configs/prisma";
 import { CoursesPaid, Order, ReportData } from "../../global";
 
 export const groupOrdersByDate = (orders: any[], groupBy: string, isSystem = true) => {
@@ -47,11 +46,7 @@ export const processOrdersReportAuthor = (coursesPaids: CoursesPaid[], groupBy: 
     const order = {
       updatedAt: coursePaid.order.updatedAt,
     } as Order;
-    const salePrice = findX(
-      coursePaid.course.priceAmount,
-      coursePaid.order.originalAmount,
-      coursePaid.order.amount,
-    );
+    const salePrice = findX(coursePaid.course.priceAmount, coursePaid.order.originalAmount, coursePaid.order.amount);
     order.amount = salePrice;
     order.originalAmount = coursePaid.course.priceAmount;
     orders.push(order);
@@ -74,54 +69,3 @@ function findX(a: number, b: number, y: number) {
   }
   return (a * y) / b;
 }
-
-export const processStarReport = async (data: any) => {
-  const total = {
-    course: { id: -1, name: "Total" },
-    stars: [
-      { star: 1, total: 0 },
-      { star: 2, total: 0 },
-      { star: 3, total: 0 },
-      { star: 4, total: 0 },
-      { star: 5, total: 0 },
-      { avgStar: 0, total: 0 },
-    ],
-  };
-  let totalRate = 0;
-  let totalStar = 0;
-  const result = [] as any[];
-  for (const _ in data) {
-    const course = await prisma.course.findUnique({
-      where: { id: _ },
-    });
-    if (!course) {
-      continue;
-    }
-    if (!course.totalRating || !course.avgRating) {
-      continue;
-    }
-    totalRate += course.totalRating;
-    totalStar += course.avgRating * course.totalRating;
-    result.push({
-      course: {
-        id: course.id,
-        name: course.courseName,
-        thumbnailFileId: course.thumbnailFileId,
-        thumbnailFile: await prisma.file.findFirst({
-          where: { id: course.thumbnailFileId },
-        }),
-      },
-      stars: data[_],
-    });
-    for (const __ of data[_]) {
-      if (!__.star) {
-        continue;
-      }
-      total.stars[__.star - 1].total += __.total;
-    }
-  }
-  total.stars[5].avgStar = totalStar / totalRate;
-  total.stars[5].total = totalRate;
-  result.push(total);
-  return result;
-};

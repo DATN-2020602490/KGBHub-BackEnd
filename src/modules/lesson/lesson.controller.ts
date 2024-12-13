@@ -155,9 +155,7 @@ export default class LessonController extends BaseController {
     if (!lesson) {
       throw new NotFoundException("lesson", id);
     }
-    if (
-      !(reqUser.id === lesson.userId || reqUser.roles.find((_) => _.role.name === RoleEnum.ADMIN))
-    ) {
+    if (!(reqUser.id === lesson.userId || reqUser.roles.find((_) => _.role.name === RoleEnum.ADMIN))) {
       throw new HttpException(403, "Forbidden");
     }
     return res.status(200).json(lesson);
@@ -230,8 +228,7 @@ export default class LessonController extends BaseController {
       const newLesson = await getLesson(id, reqUser.id);
       return res.status(200).json(newLesson);
     } else if (lesson.lessonType === LessonType.TEXT) {
-      const { lessonName, lessonNumber, partId, trialAllowed, descriptionMD, title, content } =
-        req.body;
+      const { lessonName, lessonNumber, partId, trialAllowed, descriptionMD, title, content } = req.body;
 
       let thumbnail: File = null;
       const thumbnailFile = req.fileModelsWithFieldName?.thumbnail

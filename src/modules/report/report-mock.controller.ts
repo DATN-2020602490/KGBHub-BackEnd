@@ -1,5 +1,7 @@
+import { CourseStatus } from "@prisma/client";
 import { BaseController } from "../../abstractions/base.controller";
-import { KGBRequest, KGBResponse } from "../../global";
+import { Course, KGBRequest, KGBResponse, Rating } from "../../global";
+import { KGBAuth } from "../../configs/passport";
 
 export default class ReportMockController extends BaseController {
   public path = "/api/v1/reports";
@@ -7,16 +9,28 @@ export default class ReportMockController extends BaseController {
   public initializeRoutes() {
     this.router.get(`/system`, this.getMockSystemReport);
     this.router.get(`/author`, this.getMockAuthorReport);
-    this.router.get(`/courses/stars`, this.getMockCoursesStarReport);
+    this.router.get(`/courses/stars`, KGBAuth("jwt"), this.getMockCoursesStarReport);
   }
 
+  /**
+   * Generate a random number between min and max (inclusive).
+   */
   private randomNumber(min: number, max: number): number {
     return Math.floor(Math.random() * (max - min + 1)) + min;
   }
 
+  /**
+   * Generate an array of dates based on the given range and grouping option.
+   */
   private generateDates(startDate: Date, endDate: Date, groupBy: string): string[] {
     const dates = [];
     const currentDate = new Date(startDate);
+
+    // Limit maximum range to 1 year to prevent overload
+    // const maxEndDate = new Date(startDate);
+    // maxEndDate.setFullYear(startDate.getFullYear() + 1);
+    // endDate = endDate > maxEndDate ? maxEndDate : endDate;
+
     while (currentDate <= endDate) {
       if (groupBy === "day") {
         dates.push(currentDate.toISOString().split("T")[0]);
@@ -32,10 +46,19 @@ export default class ReportMockController extends BaseController {
     return dates;
   }
 
+  private validateDateRange(startDate: Date, endDate: Date): { startDate: Date; endDate: Date } {
+    // const now = new Date();
+    // if (endDate > now) endDate = now; // Prevent future dates
+    // if (startDate > endDate) startDate = new Date(endDate.getTime() - 24 * 60 * 60 * 1000); // Ensure valid range
+    return { startDate, endDate };
+  }
+
   getMockSystemReport = async (req: KGBRequest, res: KGBResponse) => {
     const groupBy = req.gp<string>("groupBy", "day", String);
-    const startDate = new Date(req.gp<string | Date>("startDate", new Date(0), String));
-    const endDate = new Date(req.gp<string | Date>("endDate", new Date(), String));
+    let startDate = new Date(req.gp<string | Date>("startDate", new Date(0), String));
+    let endDate = new Date(req.gp<string | Date>("endDate", new Date(), String));
+
+    ({ startDate, endDate } = this.validateDateRange(startDate, endDate));
 
     const dates = this.generateDates(startDate, endDate, groupBy);
     const mockData = dates.reduce((acc, date) => {
@@ -47,22 +70,23 @@ export default class ReportMockController extends BaseController {
         totalTip: this.randomNumber(10, 200),
       };
       return acc;
-    }, {});
+    }, {} as Record<string, any>);
 
-    const result = {
+    return res.status(200).json({
       groupBy,
       startDate,
       endDate,
       target: "system",
       systemReport: mockData,
-    };
-    return res.status(200).json(result);
+    });
   };
 
   getMockAuthorReport = async (req: KGBRequest, res: KGBResponse) => {
     const groupBy = req.gp<string>("groupBy", "day", String);
-    const startDate = new Date(req.gp<string | Date>("startDate", new Date(0), String));
-    const endDate = new Date(req.gp<string | Date>("endDate", new Date(), String));
+    let startDate = new Date(req.gp<string | Date>("startDate", new Date(0), String));
+    let endDate = new Date(req.gp<string | Date>("endDate", new Date(), String));
+
+    ({ startDate, endDate } = this.validateDateRange(startDate, endDate));
 
     const periods = this.generateDates(startDate, endDate, groupBy);
     const mockData = periods.reduce((acc, period) => {
@@ -72,9 +96,9 @@ export default class ReportMockController extends BaseController {
         totalOrder: this.randomNumber(10, 100),
       };
       return acc;
-    }, {});
+    }, {} as Record<string, any>);
 
-    const result = {
+    return res.status(200).json({
       groupBy,
       startDate,
       endDate,
@@ -86,35 +110,86 @@ export default class ReportMockController extends BaseController {
         email: "author.mock@example.com",
       },
       authorReport: mockData,
-    };
-    return res.status(200).json(result);
+    });
   };
 
-  getMockCoursesStarReport = async (req: any, res: KGBResponse) => {
-    const courses = ["Mock Course 1", "Mock Course 2", "Mock Course 3"];
-    const mockData = courses.map((courseName, index) => {
-      const total = this.randomNumber(50, 500);
-      const stars = Array.from({ length: 5 }, (_, i) => ({
-        star: i + 1,
-        total: this.randomNumber(0, total / 5),
-      }));
-      const avgStar =
-        stars.reduce((sum, s) => sum + s.star * s.total, 0) /
-        stars.reduce((sum, s) => sum + s.total, 0);
+  mockRates = (course: Course) => {
+    const data = [] as Rating[];
+    const usersLength = this.randomNumber(20, 50);
+    for (let i = 0; i < usersLength; i++) {
+      const star = this.randomNumber(1, 5);
+      data.push({ courseId: course.id, course, star, userId: `user-${i}` } as any);
+    }
+    const totalStar = data.reduce((acc, item) => acc + item.star, 0);
+    const avgStar = totalStar / usersLength;
+    for (let i = 0; i < usersLength; i++) {
+      data[i]["course"]["totalRating"] = totalStar;
+      data[i]["course"]["avgRating"] = avgStar;
+    }
+    return data;
+  };
 
-      return {
+  getMockCoursesStarReport = async (req: KGBRequest, res: KGBResponse) => {
+    const reqUser = req.user;
+    const courses = (await this.prisma.course.findMany({
+      where: { userId: reqUser.id, status: CourseStatus.APPROVED },
+    })) as Course[];
+    const stars = [] as Rating[];
+    for (const course of courses) {
+      stars.push(...this.mockRates(course));
+    }
+    const result = stars.reduce((acc: any, star) => {
+      if (!acc[star.courseId]) {
+        acc[star.courseId] = [
+          { star: 1, total: 0 },
+          { star: 2, total: 0 },
+          { star: 3, total: 0 },
+          { star: 4, total: 0 },
+          { star: 5, total: 0 },
+          { avgStar: 0, total: 0 },
+        ];
+      }
+      acc[star.courseId][star.star - 1].total += 1;
+      acc[star.courseId][5].total = star.course.totalRating;
+      acc[star.courseId][5].avgStar = star.course.avgRating;
+      return acc;
+    }, {});
+    const total = {
+      course: { id: -1, name: "Total" },
+      stars: [
+        { star: 1, total: 0 },
+        { star: 2, total: 0 },
+        { star: 3, total: 0 },
+        { star: 4, total: 0 },
+        { star: 5, total: 0 },
+        { avgStar: 0, total: 0 },
+      ],
+    };
+    let totalRate = 0;
+    let totalStar = 0;
+    const _result = [] as any[];
+    for (const _ in result) {
+      const course = stars.find((item) => item.courseId === _).course;
+      totalRate += course.totalRating;
+      totalStar += course.avgRating * course.totalRating;
+      _result.push({
         course: {
-          id: (index + 1).toString(),
-          name: courseName,
-          thumbnailFile: {
-            id: `file${index + 1}`,
-            url: `https://example.com/thumbnail${index + 1}.jpg`,
-          },
+          id: course.id,
+          name: course.courseName,
+          thumbnailFileId: course.thumbnailFileId,
         },
-        stars: [...stars, { avgStar: parseFloat(avgStar.toFixed(2)), total }],
-      };
-    });
-
-    return res.status(200).json(mockData);
+        stars: result[_],
+      });
+      for (const __ of result[_]) {
+        if (!__.star) {
+          continue;
+        }
+        total.stars[__.star - 1].total += __.total;
+      }
+    }
+    total.stars[5].avgStar = totalStar / totalRate;
+    total.stars[5].total = totalRate;
+    _result.push(total);
+    return res.status(200).json(_result);
   };
 }

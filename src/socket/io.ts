@@ -28,10 +28,7 @@ class IO {
     this.setupSocketIO().then((_) => console.log(`Setup socket io`));
   }
 
-  fetchSockets = async (
-    userIds: string[],
-    namespace = this.chatNamespaceRouter,
-  ): Promise<KGBRemoteSocket[]> => {
+  fetchSockets = async (userIds: string[], namespace = this.chatNamespaceRouter): Promise<KGBRemoteSocket[]> => {
     const sockets = (await this.io.of(namespace).fetchSockets()) as KGBRemoteSocket[];
     if (userIds.length === 0 || !sockets) {
       return sockets;
@@ -64,11 +61,7 @@ class IO {
     }
   };
 
-  sendChatList = async (
-    userId: string,
-    conversationId: string,
-    socket?: KGBRemoteSocket | KGBSocket,
-  ) => {
+  sendChatList = async (userId: string, conversationId: string, socket?: KGBRemoteSocket | KGBSocket) => {
     if (socket) {
       if (!socket.user) {
         return;
@@ -140,8 +133,7 @@ class IO {
           socket.emit("login", { error: "Access token not found" });
           return;
         }
-        const reqUser = (verify(accessToken, process.env.SECRET as string) as JwtPayload)
-          .user as User;
+        const reqUser = (verify(accessToken, process.env.SECRET as string) as JwtPayload).user as User;
 
         const user = (await this.prisma.user.findFirst({
           where: { email: reqUser.email },
@@ -241,9 +233,7 @@ class IO {
     const noLastMessage = _.filter((_) => !_.lastMessage);
     const hasLastMessage = _.filter((_) => _.lastMessage);
     const hasLastMessageSorted = hasLastMessage.sort((a, b) => {
-      return (
-        new Date(b.lastMessage.updatedAt).getTime() - new Date(a.lastMessage.updatedAt).getTime()
-      );
+      return new Date(b.lastMessage.updatedAt).getTime() - new Date(a.lastMessage.updatedAt).getTime();
     });
 
     return [...hasLastMessageSorted, ...noLastMessage];
@@ -264,77 +254,74 @@ class IO {
       }
     });
 
-    socket.on(
-      "getChat",
-      async (data: { id: string | string; limit: number | string; offset: number | string }) => {
-        try {
-          if (!socket.user) {
-            socket.emit("getChat", { error: "Access denied" });
-            return;
-          }
-          const limit = parseInt(String(data.limit)) || 10;
-          const offset = parseInt(String(data.offset)) || 0;
-          const reqUser = socket.user as User;
-          if (!data.id) {
-            throw new Error("Invalid id");
-          }
-          const id = String(data.id);
-          const chat = await this.prisma.conversation.findFirst({
-            where: {
-              id,
-              chatMembers: {
-                some: { userId: reqUser.id, status: MemberStatus.ACTIVE },
+    socket.on("getChat", async (data: { id: string | string; limit: number | string; offset: number | string }) => {
+      try {
+        if (!socket.user) {
+          socket.emit("getChat", { error: "Access denied" });
+          return;
+        }
+        const limit = parseInt(String(data.limit)) || 10;
+        const offset = parseInt(String(data.offset)) || 0;
+        const reqUser = socket.user as User;
+        if (!data.id) {
+          throw new Error("Invalid id");
+        }
+        const id = String(data.id);
+        const chat = await this.prisma.conversation.findFirst({
+          where: {
+            id,
+            chatMembers: {
+              some: { userId: reqUser.id, status: MemberStatus.ACTIVE },
+            },
+          },
+          include: {
+            chatMembers: {
+              include: {
+                user: userSelector,
               },
             },
-            include: {
-              chatMembers: {
-                include: {
-                  user: userSelector,
-                },
-              },
-            },
-          });
-          if (!chat) {
-            socket.emit("getChat", { error: "Conversation not found" });
-          }
-          const messages = await this.prisma.message.findMany({
-            where: { conversationId: chat.id },
-            take: limit,
-            skip: offset,
-            include: {
-              chatMembersOnMessages: {
-                include: {
-                  chatMember: {
-                    include: {
-                      user: userSelector,
-                    },
+          },
+        });
+        if (!chat) {
+          socket.emit("getChat", { error: "Conversation not found" });
+        }
+        const messages = await this.prisma.message.findMany({
+          where: { conversationId: chat.id },
+          take: limit,
+          skip: offset,
+          include: {
+            chatMembersOnMessages: {
+              include: {
+                chatMember: {
+                  include: {
+                    user: userSelector,
                   },
                 },
               },
-              attachments: true,
-              hearts: {
-                include: {
-                  user: userSelector,
-                },
-              },
-              targetMessage: true,
             },
-            orderBy: { createdAt: "desc" },
-          });
-          const mgses = await this.prisma.message.findMany({
-            where: { conversationId: chat.id },
-          });
-          const result = {
-            chat,
-            messages,
-            remaining: mgses.length > offset + limit,
-          };
-          socket.emit("getChat", result);
-        } catch (e: any) {
-          socket.emit("getChat", { error: e.message });
-        }
-      },
-    );
+            attachments: true,
+            hearts: {
+              include: {
+                user: userSelector,
+              },
+            },
+            targetMessage: true,
+          },
+          orderBy: { createdAt: "desc" },
+        });
+        const mgses = await this.prisma.message.findMany({
+          where: { conversationId: chat.id },
+        });
+        const result = {
+          chat,
+          messages,
+          remaining: mgses.length > offset + limit,
+        };
+        socket.emit("getChat", result);
+      } catch (e: any) {
+        socket.emit("getChat", { error: e.message });
+      }
+    });
 
     socket.on("joinRoom", async (data: { id: string }) => {
       try {
@@ -463,9 +450,7 @@ class IO {
           data: { read: true, readAt: new Date(), forceRead: true },
         });
         socket.emit("read", { success: true });
-        const chatMemberJustRead = conversation.chatMembers.find(
-          (_) => _.userId === socket.user.id,
-        );
+        const chatMemberJustRead = conversation.chatMembers.find((_) => _.userId === socket.user.id);
         socket.broadcast.to(conversation.roomId).emit("newRead", chatMemberJustRead);
       } catch (e: any) {
         socket.emit("read", { error: e.message });
@@ -474,12 +459,7 @@ class IO {
 
     socket.on(
       "sendMessage",
-      async (data: {
-        id: string;
-        content: string;
-        attachments: string[];
-        targetMessageId: string | string;
-      }) => {
+      async (data: { id: string; content: string; attachments: string[]; targetMessageId: string | string }) => {
         try {
           const { id, content, attachments } = data;
           let targetMessageId = data.targetMessageId;
@@ -523,9 +503,7 @@ class IO {
               },
               content,
               attachments:
-                attachments && attachments.length
-                  ? { connect: attachments.map((_) => ({ id: _ })) }
-                  : undefined,
+                attachments && attachments.length ? { connect: attachments.map((_) => ({ id: _ })) } : undefined,
             },
           });
           if (attachments) {

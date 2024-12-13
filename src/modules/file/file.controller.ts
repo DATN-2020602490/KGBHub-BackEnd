@@ -60,8 +60,7 @@ export default class FileController extends BaseController {
       const fileSize = stat.size;
       const head = {
         "Content-Length": fileSize,
-        "Content-Type":
-          fileType === "image" ? `image/${filename.split(".")[1]}` : "application/octet-stream",
+        "Content-Type": fileType === "image" ? `image/${filename.split(".")[1]}` : "application/octet-stream",
       };
       res.writeHead(200, head);
       createReadStream(_path).pipe(res);

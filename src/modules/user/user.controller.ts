@@ -83,12 +83,7 @@ export default class UserController extends BaseController {
     if (!user) {
       throw new NotFoundException("user", id);
     }
-    if (
-      !(
-        userRoles.find((userRole) => userRole.role.name === RoleEnum.ADMIN) ||
-        user?.email === req.user.email
-      )
-    ) {
+    if (!(userRoles.find((userRole) => userRole.role.name === RoleEnum.ADMIN) || user?.email === req.user.email)) {
       throw new HttpException(401, "Unauthorized");
     }
     if (username) {

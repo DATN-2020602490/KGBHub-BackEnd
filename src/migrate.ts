@@ -149,14 +149,11 @@ migrate.add("update_campaign", async () => {
   });
   for (const campaign of campaigns) {
     if (campaign.type === CampaignType.VOUCHERS) {
-      const totalFeeVoucher =
-        campaign.vouchers.filter((_) => _.type === VoucherType.FEE_PERCENTAGE).length || 0;
-      const feeVoucherValue =
-        campaign.vouchers.find((_) => _.type === VoucherType.FEE_PERCENTAGE)?.value || 0;
+      const totalFeeVoucher = campaign.vouchers.filter((_) => _.type === VoucherType.FEE_PERCENTAGE).length || 0;
+      const feeVoucherValue = campaign.vouchers.find((_) => _.type === VoucherType.FEE_PERCENTAGE)?.value || 0;
       const totalProductVoucher =
         campaign.vouchers.filter((_) => _.type === VoucherType.PRODUCT_PERCENTAGE).length || 0;
-      const productVoucherValue =
-        campaign.vouchers.find((_) => _.type === VoucherType.PRODUCT_PERCENTAGE)?.value || 0;
+      const productVoucherValue = campaign.vouchers.find((_) => _.type === VoucherType.PRODUCT_PERCENTAGE)?.value || 0;
 
       await prisma.campaign.update({
         where: { id: campaign.id },
@@ -209,6 +206,38 @@ migrate.add("hotfix_chatMember", async () => {
         });
       }
     }
+  }
+});
+
+migrate.add("add_mimetype", async () => {
+  const attachments = await prisma.attachment.findMany({});
+  for (const attachment of attachments) {
+    const file = await prisma.file.findUnique({
+      where: { id: attachment.fileId },
+    });
+    if (!file) {
+      continue;
+    }
+    await prisma.attachment.update({
+      where: { id: attachment.id },
+      data: { mimetype: file.mimetype },
+    });
+  }
+});
+
+migrate.add("add_original_name", async () => {
+  const attachments = await prisma.attachment.findMany({});
+  for (const attachment of attachments) {
+    const file = await prisma.file.findUnique({
+      where: { id: attachment.fileId },
+    });
+    if (!file) {
+      continue;
+    }
+    await prisma.attachment.update({
+      where: { id: attachment.id },
+      data: { originalName: file.originalName },
+    });
   }
 });
 

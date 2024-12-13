@@ -468,9 +468,7 @@ export default class ChatController extends BaseController {
           continue;
         }
       }
-      if (
-        chat.chatMembers.find((_) => _.userId === reqUser.id && _.status === MemberStatus.PENDING)
-      ) {
+      if (chat.chatMembers.find((_) => _.userId === reqUser.id && _.status === MemberStatus.PENDING)) {
         _.push({
           conversation: { ...chat, unreadMessages: 0 },
           lastMessage: null,
@@ -509,9 +507,7 @@ export default class ChatController extends BaseController {
     const noLastMessage = _.filter((_) => !_.lastMessage);
     const hasLastMessage = _.filter((_) => _.lastMessage);
     const hasLastMessageSorted = hasLastMessage.sort((a, b) => {
-      return (
-        new Date(b.lastMessage.updatedAt).getTime() - new Date(a.lastMessage.updatedAt).getTime()
-      );
+      return new Date(b.lastMessage.updatedAt).getTime() - new Date(a.lastMessage.updatedAt).getTime();
     });
     return res.status(200).json([...hasLastMessageSorted, ...noLastMessage]);
   };
@@ -567,6 +563,7 @@ export default class ChatController extends BaseController {
     });
     return res.status(200).json({ chat, messages, remaining: mgses.length > offset + limit });
   };
+
   uploadAttachments = async (req: KGBRequest, res: KGBResponse) => {
     const reqUser = req.user;
     const attachments: File[] = req.fileModelsWithFieldName?.attachments;
@@ -588,6 +585,9 @@ export default class ChatController extends BaseController {
         data: {
           user: { connect: { id: reqUser.id } },
           fileId: attachment.id,
+          mimetype: attachment.mimetype,
+          originalName: attachment.originalName,
+          // conversation: { connect: { id: conversation.id } },
         },
       });
       _.push(__);
