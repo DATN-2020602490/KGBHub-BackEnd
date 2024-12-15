@@ -14,7 +14,9 @@ prisma.$use(async (params, next) => {
     return next(params);
   }
 
-  if (["create", "createMany", "update", "updateMany"].includes(params.action)) {
+  if (
+    ["create", "createMany", "update", "updateMany"].includes(params.action)
+  ) {
     params.args = params.args || {};
     if (params.args.data) {
       params.args.data.deletedAt = null;

@@ -3,7 +3,7 @@ import HttpException from "../../exceptions/http-exception";
 import prisma from "../../configs/prisma";
 import IO from "../../socket/io";
 import { User } from "../../global";
-import { getUniqueSuffix } from "../../util/data.util";
+import { getUniqueSuffix } from "../../util";
 
 export const createChat = async (body: any, reqUser: User, io: IO) => {
   const conversationType = body.conversationType as ConversationType;
@@ -48,7 +48,9 @@ export const createChat = async (body: any, reqUser: User, io: IO) => {
             },
           },
         });
-        const sockets: any[] = await io.io.of(io.chatNamespaceRouter).fetchSockets();
+        const sockets: any[] = await io.io
+          .of(io.chatNamespaceRouter)
+          .fetchSockets();
         for (const s of sockets) {
           if (!s.user) {
             continue;
@@ -72,7 +74,10 @@ export const createChat = async (body: any, reqUser: User, io: IO) => {
         where: {
           conversationType: ConversationType.DM,
           chatMembers: {},
-          roomId: reqUser.id < userId ? `dm_${reqUser.id}_${userId}` : `dm_${userId}_${reqUser.id}`,
+          roomId:
+            reqUser.id < userId
+              ? `dm_${reqUser.id}_${userId}`
+              : `dm_${userId}_${reqUser.id}`,
         },
       });
       if (existConversation) {
@@ -81,7 +86,10 @@ export const createChat = async (body: any, reqUser: User, io: IO) => {
       const conversation = await prisma.conversation.create({
         data: {
           conversationType: ConversationType.DM,
-          roomId: reqUser.id < userId ? `dm_${reqUser.id}_${userId}` : `dm_${userId}_${reqUser.id}`,
+          roomId:
+            reqUser.id < userId
+              ? `dm_${reqUser.id}_${userId}`
+              : `dm_${userId}_${reqUser.id}`,
           chatMembers: {
             createMany: {
               data: [
@@ -100,7 +108,9 @@ export const createChat = async (body: any, reqUser: User, io: IO) => {
           },
         },
       });
-      const sockets: any[] = await io.io.of(io.chatNamespaceRouter).fetchSockets();
+      const sockets: any[] = await io.io
+        .of(io.chatNamespaceRouter)
+        .fetchSockets();
       for (const s of sockets) {
         if (!s.user) {
           continue;
@@ -139,7 +149,11 @@ export const createChat = async (body: any, reqUser: User, io: IO) => {
           }
         }
       }
-      const uniqueSuffix = await getUniqueSuffix("roomId", prisma.conversation, "group_chat_");
+      const uniqueSuffix = await getUniqueSuffix(
+        "roomId",
+        prisma.conversation,
+        "group_chat_",
+      );
 
       const conversation = await prisma.conversation.create({
         data: {
@@ -165,7 +179,9 @@ export const createChat = async (body: any, reqUser: User, io: IO) => {
           },
         },
       });
-      const sockets: any[] = await io.io.of(io.chatNamespaceRouter).fetchSockets();
+      const sockets: any[] = await io.io
+        .of(io.chatNamespaceRouter)
+        .fetchSockets();
       for (const s of sockets) {
         if (!s.user) {
           continue;

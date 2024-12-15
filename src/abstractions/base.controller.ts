@@ -3,7 +3,7 @@ import { Router, NextFunction } from "express";
 import IO from "../socket/io";
 import prisma from "../configs/prisma";
 import { KGBRequest, KGBResponse } from "../global";
-import { normalizeEmail } from "../util/data.util";
+import { normalizeEmail } from "../util";
 
 class CustomRouter {
   public router: Router;
@@ -14,7 +14,10 @@ class CustomRouter {
 
   private wrap(params: any[]) {
     for (let i = 0, l = params.length; i < l; i++) {
-      if (typeof params[i] === "function" && params[i].constructor.name === "AsyncFunction") {
+      if (
+        typeof params[i] === "function" &&
+        params[i].constructor.name === "AsyncFunction"
+      ) {
         const asyncHandle = params[i];
 
         params[i] = (req: KGBRequest, res: KGBResponse, next: NextFunction) => {

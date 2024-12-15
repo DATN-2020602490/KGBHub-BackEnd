@@ -4,44 +4,39 @@ import { Request } from "express";
 import sendEmail from "../../email/process";
 import RejectForm from "../../email/templates/reject";
 import AcceptForm from "../../email/templates/accept";
-import VerifyEmail from "../../email/templates/verify";
 import Welcome from "../../email/templates/welcome";
-import ResetPassword from "../../email/templates/reset";
 import { KGBResponse } from "../../global";
-import { normalizeEmail } from "../../util/data.util";
+import { normalizeEmail } from "../../util";
 
 export default class TestController extends BaseController {
   public path = "/api/v1/tests";
 
   public initializeRoutes() {
-    this.router.post(`${this.path}`, this.test);
+    this.router.post(``, this.test);
   }
+
   test = async (req: Request, res: KGBResponse) => {
     const email = normalizeEmail(req.body.email);
+    const userFirstName = email.split("@")[0];
 
-    let emailHtml = render(
-      RejectForm({
-        userFirstName: email.split("@")[0],
-      }),
-    );
-    await sendEmail(emailHtml, email, "Your form has been rejected");
-    emailHtml = render(
-      AcceptForm({
-        userFirstName: email.split("@")[0],
-      }),
-    );
-    await sendEmail(emailHtml, email, "Your form has been accepted");
-    emailHtml = render(
-      VerifyEmail({
-        userFirstName: email.split("@")[0],
-        verifyLink: `${process.env.PUBLIC_URL}/verify?verify=${"0000000"}`,
-      }),
-    );
-    await sendEmail(emailHtml, email, `Let's verify your email address!`);
-    emailHtml = render(Welcome({ userFirstName: email.split("@")[0] }));
-    await sendEmail(emailHtml, email, "Your Adventure Begins with DKE!");
-    emailHtml = render(ResetPassword({ newPassword: "Jjr3#cng" }));
-    await sendEmail(emailHtml, email, "Reset your password");
-    return res.status(200).json({ message: "Email sent" });
+    const emailTemplates = [
+      { template: RejectForm, subject: "Your form has been rejected" },
+      { template: AcceptForm, subject: "Your form has been accepted" },
+      { template: Welcome, subject: "Your Adventure Begins with KGBHub!" },
+    ];
+
+    try {
+      await Promise.all(
+        emailTemplates.map(async ({ template, subject }) => {
+          const emailHtml = render(template({ userFirstName }));
+          await sendEmail(emailHtml, email, subject);
+        }),
+      );
+
+      return res.status(200).json({ message: "All emails sent successfully" });
+    } catch (error) {
+      console.error("Error sending emails:", error);
+      return res.status(500).json({ message: "Error sending emails" });
+    }
   };
 }

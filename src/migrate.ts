@@ -1,4 +1,10 @@
-import { CampaignType, ChatMemberRole, OrderStatus, RoleEnum, VoucherType } from "@prisma/client";
+import {
+  CampaignType,
+  ChatMemberRole,
+  OrderStatus,
+  RoleEnum,
+  VoucherType,
+} from "@prisma/client";
 import prisma from "./configs/prisma";
 import stripe from "./configs/stripe";
 import { convert } from "html-to-text";
@@ -149,11 +155,19 @@ migrate.add("update_campaign", async () => {
   });
   for (const campaign of campaigns) {
     if (campaign.type === CampaignType.VOUCHERS) {
-      const totalFeeVoucher = campaign.vouchers.filter((_) => _.type === VoucherType.FEE_PERCENTAGE).length || 0;
-      const feeVoucherValue = campaign.vouchers.find((_) => _.type === VoucherType.FEE_PERCENTAGE)?.value || 0;
+      const totalFeeVoucher =
+        campaign.vouchers.filter((_) => _.type === VoucherType.FEE_PERCENTAGE)
+          .length || 0;
+      const feeVoucherValue =
+        campaign.vouchers.find((_) => _.type === VoucherType.FEE_PERCENTAGE)
+          ?.value || 0;
       const totalProductVoucher =
-        campaign.vouchers.filter((_) => _.type === VoucherType.PRODUCT_PERCENTAGE).length || 0;
-      const productVoucherValue = campaign.vouchers.find((_) => _.type === VoucherType.PRODUCT_PERCENTAGE)?.value || 0;
+        campaign.vouchers.filter(
+          (_) => _.type === VoucherType.PRODUCT_PERCENTAGE,
+        ).length || 0;
+      const productVoucherValue =
+        campaign.vouchers.find((_) => _.type === VoucherType.PRODUCT_PERCENTAGE)
+          ?.value || 0;
 
       await prisma.campaign.update({
         where: { id: campaign.id },

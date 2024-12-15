@@ -1,11 +1,12 @@
 import { JwtPayload, verify } from "jsonwebtoken";
 import { User } from "../../global";
 import prisma from "../../configs/prisma";
-import { normalizeEmail } from "../../util/data.util";
+import { normalizeEmail } from "../../util";
 import { RoleEnum } from "@prisma/client";
 
 export const decodeJWT = async (token: string): Promise<User> => {
-  let { email } = (verify(token, process.env.SECRET as string) as JwtPayload).user as User;
+  let { email } = (verify(token, process.env.SECRET as string) as JwtPayload)
+    .user as User;
   if (!email) {
     throw new Error("Invalid token");
   }

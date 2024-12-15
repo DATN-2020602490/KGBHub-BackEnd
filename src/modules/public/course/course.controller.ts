@@ -2,8 +2,12 @@ import { BaseController } from "../../../abstractions/base.controller";
 import { KGBAuth } from "../../../configs/passport";
 import HttpException from "../../../exceptions/http-exception";
 import NotFoundException from "../../../exceptions/not-found";
-import { CourseCategory, CourseStatus, OrderStatus, RoleEnum } from "@prisma/client";
-import { JwtPayload, verify } from "jsonwebtoken";
+import {
+  CourseCategory,
+  CourseStatus,
+  OrderStatus,
+  RoleEnum,
+} from "@prisma/client";
 import { Course, KGBRequest, KGBResponse, userSelector } from "../../../global";
 
 export default class PublicCourseController extends BaseController {
@@ -23,7 +27,7 @@ export default class PublicCourseController extends BaseController {
     const direction = (req.query.direction as "asc" | "desc") || "desc";
     const isBestSeller = req.query.isBestSeller === "true";
     const myOwn = req.query.myOwn === "true";
-    const byAuthor = Number(req.query.byAuthor) || -1;
+    const byAuthor = req.gp<string>("byAuthor", null, String);
 
     const query: any = {
       where: {
@@ -42,22 +46,26 @@ export default class PublicCourseController extends BaseController {
         in: category,
       };
     }
-    if (byAuthor !== -1) {
+
+    if (byAuthor) {
       query.where.userId = byAuthor;
     }
-    if (myOwn) {
-      const token = req.headers.authorization?.split(" ")[1];
-      if (!token) {
-        return res.status(401).send("No token provided");
-      }
-      const reqUser = (verify(token, process.env.SECRET as string) as JwtPayload).user;
+    if (myOwn && req.user) {
+      const reqUser = req.user;
       if (!reqUser.roles.some((_) => _.role.name === RoleEnum.AUTHOR)) {
         throw new HttpException(403, "Forbidden");
       }
-      query.where.userId = reqUser.id;
-      delete query.where.isPublic;
-      delete query.where.status;
+      delete query.where.userId;
+      query.where.coursesPaid = {
+        some: {
+          userId: reqUser.id,
+          order: {
+            status: OrderStatus.SUCCESS,
+          },
+        },
+      };
     }
+
     if (search) {
       query.where.OR = [
         {
@@ -99,7 +107,6 @@ export default class PublicCourseController extends BaseController {
             user: userSelector,
           },
         },
-
         parts: {
           include: {
             lessons: true,
@@ -115,7 +122,9 @@ export default class PublicCourseController extends BaseController {
       bestSellerCourses = courses.slice(offset, offset + limit);
     }
     for (const course of courses) {
-      const totalBought = course.coursesPaid.filter((cp) => cp.order.status === OrderStatus.SUCCESS).length;
+      const totalBought = course.coursesPaid.filter(
+        (cp) => cp.order.status === OrderStatus.SUCCESS,
+      ).length;
       course["totalBought"] = totalBought;
       if (req.user) {
         const [isHearted, isBought, lessonDones, rating] = await Promise.all([
@@ -155,7 +164,9 @@ export default class PublicCourseController extends BaseController {
         course["isHearted"] = !!isHearted;
         course["isBought"] = !!isBought;
         course["currentLessonId"] = lessonDones[0]?.lessonId;
-        course["process"] = lessonDones.length ? Math.floor((lessonDones.length / course.totalLesson) * 100) : 0;
+        course["process"] = lessonDones.length
+          ? Math.floor((lessonDones.length / course.totalLesson) * 100)
+          : 0;
         course["myRating"] = rating;
       }
     }
@@ -192,7 +203,9 @@ export default class PublicCourseController extends BaseController {
     if (!course) {
       throw new NotFoundException("course", id);
     }
-    course["totalBought"] = course.coursesPaid.filter((cp) => cp.order.status === OrderStatus.SUCCESS).length;
+    course["totalBought"] = course.coursesPaid.filter(
+      (cp) => cp.order.status === OrderStatus.SUCCESS,
+    ).length;
 
     if (req.user) {
       const [isHearted, isBought, lessonDones, rating] = await Promise.all([
@@ -232,7 +245,9 @@ export default class PublicCourseController extends BaseController {
       course["isHearted"] = !!isHearted;
       course["isBought"] = !!isBought;
       course["currentLessonId"] = lessonDones[0]?.lessonId;
-      course["process"] = lessonDones.length ? Math.floor((lessonDones.length / course.totalLesson) * 100) : 0;
+      course["process"] = lessonDones.length
+        ? Math.floor((lessonDones.length / course.totalLesson) * 100)
+        : 0;
       course["myRating"] = rating;
     }
     return res.status(200).json(course);

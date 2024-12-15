@@ -1,6 +1,6 @@
 import { createTransport } from "nodemailer";
 import oAuthClient2 from "../configs/google.oauth2";
-import { normalizeEmail } from "../util/data.util";
+import { normalizeEmail } from "../util";
 
 const sendEmail = async (emailHtml: string, to: string, subject: string) => {
   to = normalizeEmail(to);

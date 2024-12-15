@@ -1,4 +1,4 @@
-import React, { SVGProps } from 'react';
+import React, { SVGProps } from "react";
 import {
   Body,
   Container,
@@ -9,29 +9,29 @@ import {
   Tailwind,
   Text,
   Img,
-} from '@react-email/components';
+} from "@react-email/components";
 
-const RejectForm = ({ userFirstName = 'User' }) => (
+const RejectForm = ({ userFirstName = "User" }) => (
   <Html>
     <Head />
     <Preview>Verify your account</Preview>
     <Tailwind>
       <Body className={main}>
-        <Container className={container} style={{ maxWidth: 'unset' }}>
+        <Container className={container} style={{ maxWidth: "unset" }}>
           <div className="bg-blue-500 px-4 mb-2 relative">
             <Link
-              href="https://dkelearning.vercel.app"
+              href="https://kgb-hub.harmoury.space"
               className="flex text-white gap-x-2"
-              style={{ display: 'flex' }}
+              style={{ display: "flex" }}
             >
               <img
                 src="https://i.imgur.com/spX3OOe.png"
                 alt=""
                 className="absolute top-2/4 -translate-y-2/4"
-                style={{ height: '26px', objectFit: 'cover' }}
+                style={{ height: "26px", objectFit: "cover" }}
               />
               <p className="ml-10 font-semibold text-lg leading-none">
-                Dang Khai
+                KGB Hub
               </p>
             </Link>
           </div>
@@ -47,9 +47,9 @@ const RejectForm = ({ userFirstName = 'User' }) => (
             Dear <b>{userFirstName}</b>,
           </Text>
           <Text className="text-start text-dm">
-            Thank you for your interest in the <b>Instructor</b> position at{' '}
-            <b>Dang Khai Education</b>. We appreciate you taking the time to
-            apply and share your qualifications with us.
+            Thank you for your interest in the <b>Instructor</b> position at{" "}
+            <b>KGB Hub</b>. We appreciate you taking the time to apply and share
+            your qualifications with us.
           </Text>
           <Text className="text-start text-dm">
             We were very impressed with your background and experience, and we
@@ -62,24 +62,24 @@ const RejectForm = ({ userFirstName = 'User' }) => (
           <Text className="text-start text-dm">
             We encourage you to keep an eye on our careers page for future
             opportunities that may be a better fit for your skills and
-            experience. You may also reapply for this position in{' '}
+            experience. You may also reapply for this position in{" "}
             <b>
               <i>15 days</i>
-            </b>{' '}
+            </b>{" "}
             if you believe your qualifications and experience have changed in
             that time.
           </Text>
           <Text className="text-start text-dm">
-            Thank you again for your interest in <b>Dang Khai Education</b>. We
-            wish you the best of luck in your job search.
+            Thank you again for your interest in <b>KGB Hub</b>. We wish you the
+            best of luck in your job search.
           </Text>
           <Text className="text-start text-dm">
             Sincerely,
             <br />
-            <b>Dang Khai Education</b>
+            <b>KGB Hub</b>
           </Text>
           <div className="bg-slate-300 py-4 mt-4 text-sm  text-center">
-            Copyright © 2024 Dang Khai Education. All rights reserved.
+            Copyright © 2024 KGB Hub. All rights reserved.
           </div>
         </Container>
       </Body>
@@ -91,5 +91,5 @@ export default RejectForm;
 
 const main = `bg-white font-['-apple-system,BlinkMacSystemFont,"Segoe_UI",Roboto,Oxygen-Sans,Ubuntu,Cantarell,"Helvetica_Neue",sans-serif'] text-black`;
 // const container = 'p-5 pb-12 w-[60%]';
-const container = 'p-5 pb-12 px-15 max-w-screen-sm';
-const paragraph = 'text-base leading-[26px] text-start';
+const container = "p-5 pb-12 px-15 max-w-screen-sm";
+const paragraph = "text-base leading-[26px] text-start";

@@ -1,64 +1,93 @@
 import { CourseStatus, LessonType } from "@prisma/client";
 import prisma from "../../configs/prisma";
 import { userSelector } from "../../global";
+import getVideoDurationInSeconds from "get-video-duration";
 
 export const refreshCourse = async (id: string) => {
-  if (!id) {
-    return;
-  }
+  if (!id) return;
+  await refreshPart(id);
   const course = await prisma.course.findFirst({
     where: { id },
     include: {
-      coursesPaid: {
-        include: {
-          user: userSelector,
-        },
-      },
       parts: {
         include: {
-          lessons: true,
+          lessons: {
+            select: {
+              id: true,
+              lessonType: true,
+              videoFileId: true,
+            },
+          },
         },
       },
-      rating: true,
+      rating: {
+        select: {
+          star: true,
+        },
+      },
     },
   });
-  if (!course) {
-    return;
-  }
-  let totalLessons = 0;
-  let totalPart = 0;
-  for (const part of course.parts) {
-    totalLessons += part.lessons.length;
-    totalPart += 1;
-  }
+
+  if (!course) return;
+
+  const totalPart = course.parts.length;
+  const totalLessons = course.parts.reduce(
+    (count, part) => count + part.lessons.length,
+    0,
+  );
+
+  const videoFileIds = course.parts.flatMap((part) =>
+    part.lessons
+      .filter(
+        (lesson) =>
+          lesson.lessonType === LessonType.VIDEO && lesson.videoFileId,
+      )
+      .map((lesson) => lesson.videoFileId),
+  );
+
+  const videoFiles = await prisma.file.findMany({
+    where: { id: { in: videoFileIds } },
+  });
+
   let totalDuration = 0;
-  for (const part of course.parts) {
-    for (const lesson of part.lessons) {
-      if (lesson.lessonType === LessonType.VIDEO) {
-        const video = await prisma.file.findFirst({
-          where: { id: lesson.videoFileId },
-        });
-        totalDuration += video?.duration || 0;
+  for (const video of videoFiles) {
+    if (video.duration === null || video.duration === undefined) {
+      try {
+        video.duration = await getVideoDurationInSeconds(video.localPath);
+      } catch {
+        video.duration = 0;
       }
+      await prisma.file.update({
+        where: { id: video.id },
+        data: { duration: video.duration },
+      });
     }
+
+    totalDuration += video.duration;
   }
-  let totalRating = 0;
-  let countRate = 0;
-  for (const rating of course.rating) {
-    totalRating += rating.star;
-    countRate += 1;
-  }
-  const avgRating = totalRating / countRate;
+
+  const { totalRating, countRate } = course.rating.reduce(
+    (acc, rating) => {
+      acc.totalRating += rating.star;
+      acc.countRate += 1;
+      return acc;
+    },
+    { totalRating: 0, countRate: 0 },
+  );
+
+  const avgRating = countRate > 0 ? totalRating / countRate : 0;
+
   await prisma.course.update({
     where: { id },
     data: {
       totalLesson: totalLessons,
       totalDuration,
-      avgRating: avgRating,
+      avgRating,
       totalPart,
     },
   });
 };
+
 export const getCourse = async (id: string, userId: string, admin = false) => {
   if (admin) {
     const course = await prisma.course.findFirst({
@@ -157,6 +186,7 @@ export const refreshPart = async (courseId: string) => {
     });
   }
 };
+
 export const deleteCourse = async (id: string) => {
   try {
     await prisma.heart.deleteMany({ where: { courseId: id } });

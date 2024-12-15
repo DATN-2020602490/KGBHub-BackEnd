@@ -11,9 +11,8 @@ const videoStorage = multer.diskStorage({
     cb(null, "uploads/");
   },
   filename: (req, file, cb) => {
-    // Create a unique filename to avoid conflicts
     const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    const extension = file.mimetype.split("/")[1];
+    const extension = file.filename.split(".").pop();
     cb(null, `file-${uniqueSuffix}.${extension}`);
   },
 });
@@ -22,20 +21,6 @@ const KGBUploader = multer({
   storage: videoStorage,
   limits: { fileSize: 1024 * 1024 * 1024 * 3 },
   fileFilter: (req, file, cb: any) => {
-    // const allowedMimeTypes = [
-    //   "image/jpeg",
-    //   "image/png",
-    //   "video/mp4",
-    //   "image/jpg",
-    //   "image/gif",
-    //   "video/mov",
-    // ];
-    // if (allowedMimeTypes.includes(file.mimetype)) {
-    //   cb(null, true); // Allow the file
-    // } else {
-    //   cb(new Error("Only JPEG, PNG, JPG, GIF images and MP4, MOV videos are allowed!"));
-    // }
-
     cb(null, true);
   },
 });
@@ -47,7 +32,6 @@ const downloadImage = async (url: string, userId: string) => {
   }
 
   const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-  // const extension = url.split('.').pop().split('?')[0]
   const extension = "jpg";
   const filename = `file-${uniqueSuffix}.${extension}`;
   const filepath = path.join(uploadsDir, filename);
@@ -100,4 +84,5 @@ const downloadImage = async (url: string, userId: string) => {
     return null;
   }
 };
+
 export { KGBUploader, downloadImage };

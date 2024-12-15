@@ -4,6 +4,7 @@ import StripeChecker from "./configs/stripe.checker";
 import migrate from "./migrate";
 import "./configs/prisma.middleware";
 import RefreshData from "./configs/refresh.data";
+import { defaultImage } from "./util";
 
 (global as any).check = (condition: any, message: string | Error) => {
   if (!condition) {
@@ -26,7 +27,7 @@ const port = process.env.PORT || 3000;
 const app = new App(port);
 
 app.listen();
-
+defaultImage().catch(console.log);
 migrate.init();
 RefreshData.start();
 StripeChecker.start(app.io);

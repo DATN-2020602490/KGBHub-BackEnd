@@ -11,12 +11,16 @@ import HttpException from "../../exceptions/http-exception";
 import { KGBRequest, User } from "../../global";
 import { Platform, RoleEnum } from "@prisma/client";
 import { downloadImage } from "../../configs/multer";
-import { getUniqueSuffix, normalizeEmail } from "../../util/data.util";
+import { getUniqueSuffix, normalizeEmail } from "../../util";
 
 export default class AuthController extends BaseController {
   public path = "/api/v1/auth";
 
-  private client: OAuth2Client = new OAuth2Client(process.env.CLIENT_ID, process.env.CLIENT_SECRET, "postmessage");
+  private client: OAuth2Client = new OAuth2Client(
+    process.env.CLIENT_ID,
+    process.env.CLIENT_SECRET,
+    "postmessage",
+  );
 
   public initializeRoutes() {
     this.router.get("/", KGBAuth("google", { scope: ["profile", "email"] }));
@@ -47,7 +51,12 @@ export default class AuthController extends BaseController {
     }
   };
 
-  upsertUser = async (email: string, picture: string, family_name: string, given_name: string) => {
+  upsertUser = async (
+    email: string,
+    picture: string,
+    family_name: string,
+    given_name: string,
+  ) => {
     let user = await this.prisma.user.findFirst({
       where: { email },
       include: {
@@ -60,7 +69,11 @@ export default class AuthController extends BaseController {
     });
 
     if (!user && email) {
-      const uniqueSuffix = await getUniqueSuffix("username", this.prisma.user, "user_");
+      const uniqueSuffix = await getUniqueSuffix(
+        "username",
+        this.prisma.user,
+        "user_",
+      );
       const _ = await this.prisma.user.create({
         data: {
           username: uniqueSuffix,
@@ -96,7 +109,9 @@ export default class AuthController extends BaseController {
         }
       }
 
-      const emailHtml = render(WelcomeEmail({ userFirstName: given_name || "" }));
+      const emailHtml = render(
+        WelcomeEmail({ userFirstName: given_name || "" }),
+      );
 
       await sendEmail(emailHtml, email, "Your Adventure Begins with KGB Hub!");
     }
@@ -138,9 +153,13 @@ export default class AuthController extends BaseController {
   };
 
   generateRefreshToken = (user: { email: string }) => {
-    return sign({ user: { email: user.email } }, process.env.REFRESH_SECRET || "", {
-      expiresIn: "14d",
-    });
+    return sign(
+      { user: { email: user.email } },
+      process.env.REFRESH_SECRET || "",
+      {
+        expiresIn: "14d",
+      },
+    );
   };
 
   redirect = async (req: KGBRequest, res: KGBResponse) => {
@@ -155,7 +174,9 @@ export default class AuthController extends BaseController {
       },
     });
     if (accessToken.includes("ERROR")) {
-      return res.status(403).json({ message: accessToken.replace("ERROR: ", "") });
+      return res
+        .status(403)
+        .json({ message: accessToken.replace("ERROR: ", "") });
     }
     return res.status(200).json({ accessToken, refreshToken });
   };
@@ -164,9 +185,12 @@ export default class AuthController extends BaseController {
     let email, picture, family_name, given_name;
 
     if (req.body.accessToken && !req.body.token) {
-      const { data } = await axios.get("https://www.googleapis.com/oauth2/v3/userinfo", {
-        headers: { Authorization: `Bearer ${req.body.accessToken}` },
-      });
+      const { data } = await axios.get(
+        "https://www.googleapis.com/oauth2/v3/userinfo",
+        {
+          headers: { Authorization: `Bearer ${req.body.accessToken}` },
+        },
+      );
 
       email = normalizeEmail(data.email);
       picture = data.picture;
@@ -208,7 +232,9 @@ export default class AuthController extends BaseController {
         },
       });
       if (accessToken.includes("ERROR")) {
-        return res.status(403).json({ message: accessToken.replace("ERROR: ", "") });
+        return res
+          .status(403)
+          .json({ message: accessToken.replace("ERROR: ", "") });
       }
       return res.status(200).json({
         accessToken,
@@ -220,9 +246,15 @@ export default class AuthController extends BaseController {
 
   refresh = async (req: KGBRequest, res: KGBResponse) => {
     const refreshToken = req.body.refreshToken;
-    const payload = verify(refreshToken, process.env.REFRESH_SECRET || "") as JwtPayload;
+    const payload = verify(
+      refreshToken,
+      process.env.REFRESH_SECRET || "",
+    ) as JwtPayload;
 
-    if (!payload || !(await this.prisma.user.findFirst({ where: { refreshToken } }))) {
+    if (
+      !payload ||
+      !(await this.prisma.user.findFirst({ where: { refreshToken } }))
+    ) {
       throw new HttpException(401, "Invalid refreshToken");
     }
     const reqUser = payload.user as User;
@@ -247,7 +279,9 @@ export default class AuthController extends BaseController {
       },
     });
     if (accessToken.includes("ERROR")) {
-      return res.status(403).json({ message: accessToken.replace("ERROR: ", "") });
+      return res
+        .status(403)
+        .json({ message: accessToken.replace("ERROR: ", "") });
     }
     res.json({ accessToken, newRefreshToken });
   };

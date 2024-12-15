@@ -1,6 +1,9 @@
 import { ExtractJwt, Strategy as JwtStrategy } from "passport-jwt";
 import AnonymousStrategy from "passport-anonymous";
-import { Strategy as GoogleStrategy, VerifyCallback } from "passport-google-oauth20";
+import {
+  Strategy as GoogleStrategy,
+  VerifyCallback,
+} from "passport-google-oauth20";
 import passport from "passport";
 import { render } from "@react-email/render";
 import sendEmail from "../email/process";
@@ -8,7 +11,7 @@ import WelcomeEmail from "../email/templates/welcome";
 import prisma from "./prisma";
 import { Platform, RoleEnum } from "@prisma/client";
 import { downloadImage } from "./multer";
-import { getUniqueSuffix, normalizeEmail } from "../util/data.util";
+import { getUniqueSuffix, normalizeEmail } from "../util";
 
 const User = prisma.user;
 
@@ -23,7 +26,10 @@ const googleStrategy = new GoogleStrategy(
     const email = profile._json.email;
 
     try {
-      if (email && !(await User.findFirst({ where: { email: normalizeEmail(email) } }))) {
+      if (
+        email &&
+        !(await User.findFirst({ where: { email: normalizeEmail(email) } }))
+      ) {
         const uniqueSuffix = await getUniqueSuffix("username", User, "user_");
         const _ = await User.create({
           data: {
@@ -55,9 +61,15 @@ const googleStrategy = new GoogleStrategy(
           }
         }
 
-        const emailHtml = render(WelcomeEmail({ userFirstName: profile._json.given_name || "" }));
+        const emailHtml = render(
+          WelcomeEmail({ userFirstName: profile._json.given_name || "" }),
+        );
 
-        await sendEmail(emailHtml, email, "Your Adventure Begins with KGB Hub!");
+        await sendEmail(
+          emailHtml,
+          email,
+          "Your Adventure Begins with KGB Hub!",
+        );
       }
 
       const user = await User.findFirst({

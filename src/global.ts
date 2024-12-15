@@ -36,22 +36,6 @@ export const userSelector = {
   },
 };
 
-export type ReportStar = {
-  course: {
-    id: string | "-1"; // The course ID, can be "-1" for the "Total" summary.
-    name: string | "Total"; // The course name or "Total" for the summary.
-    thumbnailFileId?: string; // Optional thumbnail file ID (not present for "Total").
-  };
-  stars: [
-    { star: 1; total: number }, // Total ratings with 1 star.
-    { star: 2; total: number }, // Total ratings with 2 stars.
-    { star: 3; total: number }, // Total ratings with 3 stars.
-    { star: 4; total: number }, // Total ratings with 4 stars.
-    { star: 5; total: number }, // Total ratings with 5 stars.
-    { avgStar: number; total: number }, // Average star rating and total reviews.
-  ];
-}[];
-
 export type ReportData = {
   [dateKey: string]: {
     totalOriginalAmount: number;
@@ -90,7 +74,11 @@ export type KGBRequest = Request & {
    *          the default value is returned. Throws an error if the parameter is missing or invalid according
    *          to the validation criteria.
    */
-  gp: <T>(key: string, defaultValue?: T, validate?: ((val: T) => T | undefined) | T[] | RegExp | object) => T | null;
+  gp: <T>(
+    key: string,
+    defaultValue?: T,
+    validate?: ((val: T) => T | undefined) | T[] | RegExp | object,
+  ) => T | null;
 };
 
 export type fileModel = File;
@@ -122,7 +110,8 @@ export type ConversationWithLastMessage = {
   lastMessage?: Message;
 };
 
-export type KGBRemoteSocket = RemoteSocket<DefaultEventsMap, any> & AddonUserOnSocket;
+export type KGBRemoteSocket = RemoteSocket<DefaultEventsMap, any> &
+  AddonUserOnSocket;
 
 export type AddonUserOnSocket = { user: User };
 

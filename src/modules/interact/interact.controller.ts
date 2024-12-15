@@ -15,9 +15,21 @@ export default class InteractController extends BaseController {
     this.router.post("/hearts", KGBAuth("jwt"), this.heartAction);
     this.router.post("/comments", KGBAuth("jwt"), this.createCommentAction);
     this.router.get("/", this.getInteracts);
-    this.router.get("/user-interactions", KGBAuth("jwt"), this.getUserInteractions);
-    this.router.patch("/comments/:id", KGBAuth("jwt"), this.updateCommentAction);
-    this.router.delete("/comments/:id", KGBAuth("jwt"), this.deleteCommentAction);
+    this.router.get(
+      "/user-interactions",
+      KGBAuth("jwt"),
+      this.getUserInteractions,
+    );
+    this.router.patch(
+      "/comments/:id",
+      KGBAuth("jwt"),
+      this.updateCommentAction,
+    );
+    this.router.delete(
+      "/comments/:id",
+      KGBAuth("jwt"),
+      this.deleteCommentAction,
+    );
   }
 
   getRates = async (req: KGBRequest, res: KGBResponse) => {
@@ -55,7 +67,12 @@ export default class InteractController extends BaseController {
     for (const rate of _rates) {
       general[rate.star] += 1;
     }
-    return res.status(200).json({ rates, avgRate: course.avgRating, general, totalRated: _rates.length });
+    return res.status(200).json({
+      rates,
+      avgRate: course.avgRating,
+      general,
+      totalRated: _rates.length,
+    });
   };
 
   rateAction = async (req: KGBRequest, res: KGBResponse) => {
@@ -113,7 +130,8 @@ export default class InteractController extends BaseController {
     const rates = await this.prisma.rating.findMany({
       where: { courseId },
     });
-    const avg = rates.reduce((acc, rate) => acc + rate.star, 0) / (rates.length || 1);
+    const avg =
+      rates.reduce((acc, rate) => acc + rate.star, 0) / (rates.length || 1);
     await this.prisma.course.update({
       where: { id: courseId },
       data: { avgRating: avg },
@@ -130,9 +148,15 @@ export default class InteractController extends BaseController {
     const fetchData = async (model: any, userId: string) => {
       const data = await model.findMany({ where: { userId } });
       return {
-        lessonIds: data.filter((item) => item.lessonId).map((item) => item.lessonId),
-        courseIds: data.filter((item) => item.courseId).map((item) => item.courseId),
-        messageIds: data.filter((item) => item.messageId).map((item) => item.messageId),
+        lessonIds: data
+          .filter((item) => item.lessonId)
+          .map((item) => item.lessonId),
+        courseIds: data
+          .filter((item) => item.courseId)
+          .map((item) => item.courseId),
+        messageIds: data
+          .filter((item) => item.messageId)
+          .map((item) => item.messageId),
       };
     };
 
@@ -153,7 +177,11 @@ export default class InteractController extends BaseController {
     if (!targetResource) {
       throw new HttpException(400, "Missing target resource");
     }
-    if (targetResource !== "lesson" && targetResource !== "course" && targetResource !== "message") {
+    if (
+      targetResource !== "lesson" &&
+      targetResource !== "course" &&
+      targetResource !== "message"
+    ) {
       throw new HttpException(400, "Invalid target resource");
     }
     let comments =
@@ -205,7 +233,9 @@ export default class InteractController extends BaseController {
       });
     }
 
-    return res.status(200).json({ comments, commentsCount, isHearted, hearsCount });
+    return res
+      .status(200)
+      .json({ comments, commentsCount, isHearted, hearsCount });
   };
 
   heartAction = async (req: KGBRequest, res: KGBResponse) => {

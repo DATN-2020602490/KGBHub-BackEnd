@@ -3,7 +3,12 @@ import { KGBResponse } from "../../global";
 import { KGBAuth } from "../../configs/passport";
 import HttpException from "../../exceptions/http-exception";
 import NotFoundException from "../../exceptions/not-found";
-import { CourseCategory, FormStatus, OrderStatus, RoleEnum } from "@prisma/client";
+import {
+  CourseCategory,
+  FormStatus,
+  OrderStatus,
+  RoleEnum,
+} from "@prisma/client";
 import { File, KGBRequest } from "../../global";
 import { fileMiddleware } from "../../middlewares/file.middleware";
 
@@ -78,12 +83,25 @@ export default class UserController extends BaseController {
   updateUser = async (req: KGBRequest, res: KGBResponse) => {
     const userRoles = req.user.roles;
     const id = req.gp<string>("id", undefined, String);
-    const { username, firstName, lastName, phone, gender, birthday, syncWithGoogle } = req.body;
+    const {
+      username,
+      firstName,
+      lastName,
+      phone,
+      gender,
+      birthday,
+      syncWithGoogle,
+    } = req.body;
     const user = await this.prisma.user.findFirst({ where: { id } });
     if (!user) {
       throw new NotFoundException("user", id);
     }
-    if (!(userRoles.find((userRole) => userRole.role.name === RoleEnum.ADMIN) || user?.email === req.user.email)) {
+    if (
+      !(
+        userRoles.find((userRole) => userRole.role.name === RoleEnum.ADMIN) ||
+        user?.email === req.user.email
+      )
+    ) {
       throw new HttpException(401, "Unauthorized");
     }
     if (username) {
@@ -246,7 +264,10 @@ export default class UserController extends BaseController {
         where: { userId: reqUser.id },
       })
     ) {
-      throw new HttpException(400, "You have already submitted your information");
+      throw new HttpException(
+        400,
+        "You have already submitted your information",
+      );
     }
     const submitForm = await this.prisma.submitForm.create({
       data: {
@@ -349,7 +370,8 @@ export default class UserController extends BaseController {
       throw new NotFoundException("form", req.user.id);
     }
     const now = new Date();
-    const is15Days = now.getTime() - myForm.updatedAt.getTime() > 15 * 24 * 60 * 60 * 1000;
+    const is15Days =
+      now.getTime() - myForm.updatedAt.getTime() > 15 * 24 * 60 * 60 * 1000;
     if (!(is15Days && myForm.status === FormStatus.REJECTED)) {
       throw new HttpException(400, "You can only update form every 15 days");
     }

@@ -8,7 +8,12 @@ type Res = {
   code?: string;
 };
 
-const errorHandler = (error: any, req: KGBRequest, res: KGBResponse, next: NextFunction) => {
+const errorHandler = (
+  error: any,
+  req: KGBRequest,
+  res: KGBResponse,
+  next: NextFunction,
+) => {
   const response: Res = {};
 
   response.message = "Unknown error";
@@ -32,9 +37,12 @@ const errorHandler = (error: any, req: KGBRequest, res: KGBResponse, next: NextF
   }
 
   if (res) {
-    res.status(res.statusCode === 200 ? 400 : res.statusCode).json({ error: response });
+    res
+      .status(res.statusCode === 200 ? 400 : res.statusCode)
+      .json({ error: response });
   }
-
+  console.log("Router: ", req.originalUrl);
+  console.log("Method: ", req.method);
   console.error(error);
 };
 

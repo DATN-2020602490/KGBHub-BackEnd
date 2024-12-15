@@ -2,7 +2,11 @@ import { BaseController } from "../../abstractions/base.controller";
 import express from "express";
 import stripe from "../../configs/stripe";
 import { KGBRequest, KGBResponse } from "../../global";
-import { createLineItems, notPaidCourses, onStripeHook } from "./stripe.service";
+import {
+  createLineItems,
+  notPaidCourses,
+  onStripeHook,
+} from "./stripe.service";
 import { CourseStatus, Currency, OrderStatus } from "@prisma/client";
 import HttpException from "../../exceptions/http-exception";
 import NotFoundException from "../../exceptions/not-found";
@@ -13,9 +17,17 @@ export default class StripeController extends BaseController {
   public path = "/api/v1/stripe";
 
   public initializeRoutes() {
-    this.router.post("/webhook", express.raw({ type: "application/json" }), this.handleWebhook);
+    this.router.post(
+      "/webhook",
+      express.raw({ type: "application/json" }),
+      this.handleWebhook,
+    );
     this.router.post("/buy-course", KGBAuth("jwt"), this.buyCourse);
-    this.router.post("/checkout-from-cart", KGBAuth("jwt"), this.checkoutFromCart);
+    this.router.post(
+      "/checkout-from-cart",
+      KGBAuth("jwt"),
+      this.checkoutFromCart,
+    );
   }
 
   handleWebhook = async (req: KGBRequest, res: KGBResponse) => {
@@ -69,13 +81,19 @@ export default class StripeController extends BaseController {
       throw new HttpException(400, "Course already paid");
     }
     const tipPercent = req.gp<number>("tipPercent", 0, Number);
-    const { line_items, platformFee, tip, totalAmount, originalAmount, originalFee } = await createLineItems(
-      req.user.id,
-      ids,
-      tipPercent,
-      code,
+    const {
+      line_items,
+      platformFee,
+      tip,
+      totalAmount,
+      originalAmount,
+      originalFee,
+    } = await createLineItems(req.user.id, ids, tipPercent, code);
+    const success_url = req.gp<string>(
+      "successUrl",
+      process.env.PUBLIC_URL,
+      String,
     );
-    const success_url = req.gp<string>("successUrl", process.env.PUBLIC_URL, String);
     const checkout = await stripe.checkout.sessions.create({
       line_items,
       mode: "payment",
@@ -83,8 +101,12 @@ export default class StripeController extends BaseController {
     });
     const order = await this.prisma.order.create({
       data: {
-        platformFee: BigNumber(platformFee.unit_amount_decimal).div(100).toNumber(),
-        KGBHubServiceTip: tip ? BigNumber(tip.unit_amount_decimal).div(100).toNumber() : 0,
+        platformFee: BigNumber(platformFee.unit_amount_decimal)
+          .div(100)
+          .toNumber(),
+        KGBHubServiceTip: tip
+          ? BigNumber(tip.unit_amount_decimal).div(100).toNumber()
+          : 0,
         amount: BigNumber(totalAmount).toNumber(),
         currency: course.currency as Currency,
         status: OrderStatus.PENDING,
@@ -128,13 +150,19 @@ export default class StripeController extends BaseController {
       throw new HttpException(400, "Courses already paid");
     }
     const tipPercent = req.gp<number>("tipPercent", 0, Number);
-    const { line_items, platformFee, tip, totalAmount, originalAmount, originalFee } = await createLineItems(
-      req.user.id,
-      courseIds,
-      tipPercent,
-      code,
+    const {
+      line_items,
+      platformFee,
+      tip,
+      totalAmount,
+      originalAmount,
+      originalFee,
+    } = await createLineItems(req.user.id, courseIds, tipPercent, code);
+    const success_url = req.gp<string>(
+      "successUrl",
+      process.env.PUBLIC_URL,
+      String,
     );
-    const success_url = req.gp<string>("successUrl", process.env.PUBLIC_URL, String);
     const checkout = await stripe.checkout.sessions.create({
       line_items,
       mode: "payment",
@@ -142,8 +170,12 @@ export default class StripeController extends BaseController {
     });
     const order = await this.prisma.order.create({
       data: {
-        platformFee: BigNumber(platformFee.unit_amount_decimal).div(100).toNumber(),
-        KGBHubServiceTip: tip ? BigNumber(tip.unit_amount_decimal).div(100).toNumber() : 0,
+        platformFee: BigNumber(platformFee.unit_amount_decimal)
+          .div(100)
+          .toNumber(),
+        KGBHubServiceTip: tip
+          ? BigNumber(tip.unit_amount_decimal).div(100).toNumber()
+          : 0,
         amount: BigNumber(totalAmount).toNumber(),
         currency: Currency.USD,
         status: OrderStatus.PENDING,

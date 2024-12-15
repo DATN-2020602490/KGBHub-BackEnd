@@ -1,6 +1,10 @@
 import { CoursesPaid, Order, ReportData } from "../../global";
 
-export const groupOrdersByDate = (orders: any[], groupBy: string, isSystem = true) => {
+export const groupOrdersByDate = (
+  orders: any[],
+  groupBy: string,
+  isSystem = true,
+) => {
   const result = orders.reduce((acc: ReportData, order) => {
     const dateKey = getDateKey(order.updatedAt, groupBy);
     if (!acc[dateKey]) {
@@ -40,13 +44,20 @@ export const getDateKey = (date: Date, groupBy: string) => {
   return null;
 };
 
-export const processOrdersReportAuthor = (coursesPaids: CoursesPaid[], groupBy: string) => {
+export const processOrdersReportAuthor = (
+  coursesPaids: CoursesPaid[],
+  groupBy: string,
+) => {
   const orders = [] as Order[];
   for (const coursePaid of coursesPaids) {
     const order = {
       updatedAt: coursePaid.order.updatedAt,
     } as Order;
-    const salePrice = findX(coursePaid.course.priceAmount, coursePaid.order.originalAmount, coursePaid.order.amount);
+    const salePrice = findX(
+      coursePaid.course.priceAmount,
+      coursePaid.order.originalAmount,
+      coursePaid.order.amount,
+    );
     order.amount = salePrice;
     order.originalAmount = coursePaid.course.priceAmount;
     orders.push(order);

@@ -37,18 +37,23 @@ export default class FileController extends BaseController {
       });
       return res.json(files);
     }
-    const file = await this.prisma.file.findFirst({
+    let file = await this.prisma.file.findFirst({
       where: { id: fileId },
     });
     if (!file) {
-      throw new NotFoundException("file", fileId);
+      file = await this.prisma.file.findFirst({
+        where: { filename: "0.jpg" },
+      });
     }
+
     const filename = file.filename;
     const isExist = existsSync(`uploads/${filename}`);
     if (!isExist) {
       throw new NotFoundException("file", filename);
     }
-    const fileType = ["jpeg", "jpg", "png", "gif", "svg"].includes(filename.split(".")[1])
+    const fileType = ["jpeg", "jpg", "png", "gif", "svg"].includes(
+      filename.split(".")[1],
+    )
       ? "image"
       : ["mp4", "mov"].includes(filename.split(".")[1])
       ? "video"
@@ -60,7 +65,10 @@ export default class FileController extends BaseController {
       const fileSize = stat.size;
       const head = {
         "Content-Length": fileSize,
-        "Content-Type": fileType === "image" ? `image/${filename.split(".")[1]}` : "application/octet-stream",
+        "Content-Type":
+          fileType === "image"
+            ? `image/${filename.split(".")[1]}`
+            : "application/octet-stream",
       };
       res.writeHead(200, head);
       createReadStream(_path).pipe(res);
@@ -87,7 +95,9 @@ export default class FileController extends BaseController {
           reqUser.id === lesson.userId ||
           reqUser.roles.find((_) => _.role.name === RoleEnum.ADMIN) ||
           user?.coursesPaid.find(
-            (_) => _.courseId === lesson.part.courseId && _.order.status === OrderStatus.SUCCESS,
+            (_) =>
+              _.courseId === lesson.part.courseId &&
+              _.order.status === OrderStatus.SUCCESS,
           ) ||
           lesson.trialAllowed
         )

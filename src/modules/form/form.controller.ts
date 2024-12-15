@@ -13,9 +13,24 @@ export default class FormController extends BaseController {
   public path = "/api/v1/forms";
 
   public initializeRoutes() {
-    this.router.get(`/`, KGBAuth("jwt"), checkRoleMiddleware([RoleEnum.ADMIN]), this.getForms);
-    this.router.get(`/:id`, KGBAuth("jwt"), checkRoleMiddleware([RoleEnum.ADMIN]), this.getForm);
-    this.router.patch(`/:id`, KGBAuth("jwt"), checkRoleMiddleware([RoleEnum.ADMIN]), this.updateForm);
+    this.router.get(
+      `/`,
+      KGBAuth("jwt"),
+      checkRoleMiddleware([RoleEnum.ADMIN]),
+      this.getForms,
+    );
+    this.router.get(
+      `/:id`,
+      KGBAuth("jwt"),
+      checkRoleMiddleware([RoleEnum.ADMIN]),
+      this.getForm,
+    );
+    this.router.patch(
+      `/:id`,
+      KGBAuth("jwt"),
+      checkRoleMiddleware([RoleEnum.ADMIN]),
+      this.updateForm,
+    );
   }
 
   getForms = async (req: KGBRequest, res: KGBResponse) => {
@@ -58,7 +73,11 @@ export default class FormController extends BaseController {
           userFirstName: reqUser.email.split("@")[0],
         }),
       );
-      await sendEmail(emailHtml, form.user.email, "Your form has been approved");
+      await sendEmail(
+        emailHtml,
+        form.user.email,
+        "Your form has been approved",
+      );
     } else {
       const _ = await this.prisma.submitForm.findFirst({
         where: { id },
@@ -81,7 +100,11 @@ export default class FormController extends BaseController {
           userFirstName: reqUser.email.split("@")[0],
         }),
       );
-      await sendEmail(emailHtml, form.user.email, "Your form has been rejected");
+      await sendEmail(
+        emailHtml,
+        form.user.email,
+        "Your form has been rejected",
+      );
     }
     return res.status(200).json(form);
   };

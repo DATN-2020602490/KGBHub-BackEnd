@@ -25,18 +25,29 @@ class IO {
 
   constructor(server: Server) {
     this.io = new SocketServer(server);
-    this.setupSocketIO().then((_) => console.log(`Setup socket io`));
+    this.setupSocketIO();
   }
 
-  fetchSockets = async (userIds: string[], namespace = this.chatNamespaceRouter): Promise<KGBRemoteSocket[]> => {
-    const sockets = (await this.io.of(namespace).fetchSockets()) as KGBRemoteSocket[];
+  fetchSockets = async (
+    userIds: string[],
+    namespace = this.chatNamespaceRouter,
+  ): Promise<KGBRemoteSocket[]> => {
+    const sockets = (await this.io
+      .of(namespace)
+      .fetchSockets()) as KGBRemoteSocket[];
     if (userIds.length === 0 || !sockets) {
       return sockets;
     }
-    return sockets.filter((_) => !!_.user).filter((socket) => userIds.includes(socket.user.id));
+    return sockets
+      .filter((_) => !!_.user)
+      .filter((socket) => userIds.includes(socket.user.id));
   };
 
-  makeRead = async (userId: string, roomId: string, socket: KGBRemoteSocket | KGBSocket) => {
+  makeRead = async (
+    userId: string,
+    roomId: string,
+    socket: KGBRemoteSocket | KGBSocket,
+  ) => {
     if (socket) {
       if (socket.rooms.has(roomId)) {
         await prisma.chatMembersOnMessages.updateMany({
@@ -61,7 +72,11 @@ class IO {
     }
   };
 
-  sendChatList = async (userId: string, conversationId: string, socket?: KGBRemoteSocket | KGBSocket) => {
+  sendChatList = async (
+    userId: string,
+    conversationId: string,
+    socket?: KGBRemoteSocket | KGBSocket,
+  ) => {
     if (socket) {
       if (!socket.user) {
         return;
@@ -125,7 +140,7 @@ class IO {
     return message;
   }
 
-  private setupLogin = async (socket: KGBSocket, message = false) => {
+  private setupLogin = (socket: KGBSocket, message = false) => {
     socket.on("login", async (data: { accessToken: string }) => {
       try {
         const accessToken = data.accessToken;
@@ -133,7 +148,9 @@ class IO {
           socket.emit("login", { error: "Access token not found" });
           return;
         }
-        const reqUser = (verify(accessToken, process.env.SECRET as string) as JwtPayload).user as User;
+        const reqUser = (
+          verify(accessToken, process.env.SECRET as string) as JwtPayload
+        ).user as User;
 
         const user = (await this.prisma.user.findFirst({
           where: { email: reqUser.email },
@@ -170,7 +187,9 @@ class IO {
     });
   };
 
-  public chatList = async (userId: string): Promise<ConversationWithLastMessage[]> => {
+  public chatList = async (
+    userId: string,
+  ): Promise<ConversationWithLastMessage[]> => {
     const chats = (await this.prisma.conversation.findMany({
       where: {
         chatMembers: { some: { userId } },
@@ -194,7 +213,11 @@ class IO {
           continue;
         }
       }
-      if (chat.chatMembers.find((_) => _.userId === userId && _.status === MemberStatus.PENDING)) {
+      if (
+        chat.chatMembers.find(
+          (_) => _.userId === userId && _.status === MemberStatus.PENDING,
+        )
+      ) {
         _.push({
           conversation: { ...chat, unreadMessages: 0 },
           lastMessage: null,
@@ -223,7 +246,9 @@ class IO {
         },
       })) as Message & { seenByAll: boolean };
       if (lastMessage) {
-        lastMessage.seenByAll = lastMessage.chatMembersOnMessages.every((_) => _.read);
+        lastMessage.seenByAll = lastMessage.chatMembersOnMessages.every(
+          (_) => _.read,
+        );
       }
       _.push({
         conversation: { ...chat, unreadMessages },
@@ -233,13 +258,16 @@ class IO {
     const noLastMessage = _.filter((_) => !_.lastMessage);
     const hasLastMessage = _.filter((_) => _.lastMessage);
     const hasLastMessageSorted = hasLastMessage.sort((a, b) => {
-      return new Date(b.lastMessage.updatedAt).getTime() - new Date(a.lastMessage.updatedAt).getTime();
+      return (
+        new Date(b.lastMessage.updatedAt).getTime() -
+        new Date(a.lastMessage.updatedAt).getTime()
+      );
     });
 
     return [...hasLastMessageSorted, ...noLastMessage];
   };
 
-  private setupChat = async (socket: KGBSocket) => {
+  private setupChat = (socket: KGBSocket) => {
     socket.on("getChats", async () => {
       try {
         if (!socket.user) {
@@ -254,74 +282,81 @@ class IO {
       }
     });
 
-    socket.on("getChat", async (data: { id: string | string; limit: number | string; offset: number | string }) => {
-      try {
-        if (!socket.user) {
-          socket.emit("getChat", { error: "Access denied" });
-          return;
-        }
-        const limit = parseInt(String(data.limit)) || 10;
-        const offset = parseInt(String(data.offset)) || 0;
-        const reqUser = socket.user as User;
-        if (!data.id) {
-          throw new Error("Invalid id");
-        }
-        const id = String(data.id);
-        const chat = await this.prisma.conversation.findFirst({
-          where: {
-            id,
-            chatMembers: {
-              some: { userId: reqUser.id, status: MemberStatus.ACTIVE },
-            },
-          },
-          include: {
-            chatMembers: {
-              include: {
-                user: userSelector,
+    socket.on(
+      "getChat",
+      async (data: {
+        id: string | string;
+        limit: number | string;
+        offset: number | string;
+      }) => {
+        try {
+          if (!socket.user) {
+            socket.emit("getChat", { error: "Access denied" });
+            return;
+          }
+          const limit = parseInt(String(data.limit)) || 10;
+          const offset = parseInt(String(data.offset)) || 0;
+          const reqUser = socket.user as User;
+          if (!data.id) {
+            throw new Error("Invalid id");
+          }
+          const id = String(data.id);
+          const chat = await this.prisma.conversation.findFirst({
+            where: {
+              id,
+              chatMembers: {
+                some: { userId: reqUser.id, status: MemberStatus.ACTIVE },
               },
             },
-          },
-        });
-        if (!chat) {
-          socket.emit("getChat", { error: "Conversation not found" });
-        }
-        const messages = await this.prisma.message.findMany({
-          where: { conversationId: chat.id },
-          take: limit,
-          skip: offset,
-          include: {
-            chatMembersOnMessages: {
-              include: {
-                chatMember: {
-                  include: {
-                    user: userSelector,
-                  },
+            include: {
+              chatMembers: {
+                include: {
+                  user: userSelector,
                 },
               },
             },
-            attachments: true,
-            hearts: {
-              include: {
-                user: userSelector,
+          });
+          if (!chat) {
+            socket.emit("getChat", { error: "Conversation not found" });
+          }
+          const messages = await this.prisma.message.findMany({
+            where: { conversationId: chat.id },
+            take: limit,
+            skip: offset,
+            include: {
+              chatMembersOnMessages: {
+                include: {
+                  chatMember: {
+                    include: {
+                      user: userSelector,
+                    },
+                  },
+                },
               },
+              attachments: true,
+              hearts: {
+                include: {
+                  user: userSelector,
+                },
+              },
+              targetMessage: true,
             },
-            targetMessage: true,
-          },
-          orderBy: { createdAt: "desc" },
-        });
-        const mgses = await this.prisma.message.findMany({
-          where: { conversationId: chat.id },
-        });
-        const result = {
-          chat,
-          messages,
-          remaining: mgses.length > offset + limit,
-        };
-        socket.emit("getChat", result);
-      } catch (e: any) {
-        socket.emit("getChat", { error: e.message });
-      }
-    });
+            orderBy: { createdAt: "desc" },
+          });
+          const mgses = await this.prisma.message.findMany({
+            where: { conversationId: chat.id },
+          });
+          const result = {
+            chat,
+            messages,
+            remaining: mgses.length > offset + limit,
+          };
+          socket.emit("getChat", result);
+        } catch (e: any) {
+          socket.emit("getChat", { error: e.message });
+        }
+      },
+    );
 
     socket.on("joinRoom", async (data: { id: string }) => {
       try {
@@ -450,8 +485,12 @@ class IO {
           data: { read: true, readAt: new Date(), forceRead: true },
         });
         socket.emit("read", { success: true });
-        const chatMemberJustRead = conversation.chatMembers.find((_) => _.userId === socket.user.id);
-        socket.broadcast.to(conversation.roomId).emit("newRead", chatMemberJustRead);
+        const chatMemberJustRead = conversation.chatMembers.find(
+          (_) => _.userId === socket.user.id,
+        );
+        socket.broadcast
+          .to(conversation.roomId)
+          .emit("newRead", chatMemberJustRead);
       } catch (e: any) {
         socket.emit("read", { error: e.message });
       }
@@ -459,7 +498,12 @@ class IO {
 
     socket.on(
       "sendMessage",
-      async (data: { id: string; content: string; attachments: string[]; targetMessageId: string | string }) => {
+      async (data: {
+        id: string;
+        content: string;
+        attachments: string[];
+        targetMessageId: string | string;
+      }) => {
         try {
           const { id, content, attachments } = data;
           let targetMessageId = data.targetMessageId;
@@ -503,7 +547,9 @@ class IO {
               },
               content,
               attachments:
-                attachments && attachments.length ? { connect: attachments.map((_) => ({ id: _ })) } : undefined,
+                attachments && attachments.length
+                  ? { connect: attachments.map((_) => ({ id: _ })) }
+                  : undefined,
             },
           });
           if (attachments) {
@@ -579,7 +625,9 @@ class IO {
           const chatMembers = await prisma.chatMember.findMany({
             where: { conversationId: conversation.id },
           });
-          const sockets = await this.fetchSockets(chatMembers.map((_) => _.userId));
+          const sockets = await this.fetchSockets(
+            chatMembers.map((_) => _.userId),
+          );
           for (const socket of sockets) {
             if (!socket.user) {
               continue;
@@ -597,7 +645,7 @@ class IO {
     );
   };
 
-  private setupDisconnect = async (socket: KGBSocket, namespace: string) => {
+  private setupDisconnect = (socket: KGBSocket, namespace: string) => {
     socket.on("disconnect", async () => {
       if (socket.user) {
         const sockets = await this.fetchSockets([socket.user.id], namespace);
@@ -614,7 +662,7 @@ class IO {
     return roomInfo.length;
   };
 
-  private setupSocketIO = async () => {
+  private setupSocketIO = () => {
     this.chatNamespace = this.io.of(this.chatNamespaceRouter);
     this.notificationNamespace = this.io.of(this.notificationNamespaceRouter);
 

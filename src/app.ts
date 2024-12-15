@@ -56,6 +56,7 @@ class App {
       // new ReportController(),
       new CampaignController(),
       new ReportMockController(),
+      new TestController(),
     ];
 
     this.initializeMiddlewares();
@@ -70,6 +71,10 @@ class App {
   }
 
   private initializeMiddlewares() {
+    this.app.use((req, res, next) => {
+      console.log(`${req.method}: ${req.url}`);
+      next();
+    });
     this.app.use(
       express.json({
         verify: function (req: any, res, buf) {

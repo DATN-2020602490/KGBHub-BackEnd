@@ -79,7 +79,13 @@ export default class LessonController extends BaseController {
       const partId = req.gp<string>("partId", undefined, String);
       const courseId = req.gp<string>("courseId", undefined, String);
       const trialAllowed = req.body.trialAllowed === "true";
-      if (!lessonName || !lessonNumber || !descriptionMD || !partId || !courseId) {
+      if (
+        !lessonName ||
+        !lessonNumber ||
+        !descriptionMD ||
+        !partId ||
+        !courseId
+      ) {
         throw new HttpException(400, "Missing fields");
       }
       const lesson = await this.prisma.lesson.create({
@@ -110,7 +116,13 @@ export default class LessonController extends BaseController {
       const partId = req.gp<string>("partId", undefined, String);
       const courseId = req.gp<string>("courseId", undefined, String);
       const trialAllowed = req.body.trialAllowed === "true";
-      if (!lessonName || !lessonNumber || !descriptionMD || !partId || !courseId) {
+      if (
+        !lessonName ||
+        !lessonNumber ||
+        !descriptionMD ||
+        !partId ||
+        !courseId
+      ) {
         throw new HttpException(400, "Missing fields");
       }
       let thumbnail: File = null;
@@ -155,7 +167,12 @@ export default class LessonController extends BaseController {
     if (!lesson) {
       throw new NotFoundException("lesson", id);
     }
-    if (!(reqUser.id === lesson.userId || reqUser.roles.find((_) => _.role.name === RoleEnum.ADMIN))) {
+    if (
+      !(
+        reqUser.id === lesson.userId ||
+        reqUser.roles.find((_) => _.role.name === RoleEnum.ADMIN)
+      )
+    ) {
       throw new HttpException(403, "Forbidden");
     }
     return res.status(200).json(lesson);
@@ -165,7 +182,12 @@ export default class LessonController extends BaseController {
     const limit = Number(req.query.limit) || 12;
     const offset = Number(req.query.offset) || 0;
     const status = req.gp<LessonStatus>("status", null, LessonStatus);
-    const { lessons, total } = await getLessons(reqUser.id, limit, offset, status);
+    const { lessons, total } = await getLessons(
+      reqUser.id,
+      limit,
+      offset,
+      status,
+    );
     res.status(200).json({ lessons, total, page: offset / limit + 1 });
   };
 
@@ -228,7 +250,15 @@ export default class LessonController extends BaseController {
       const newLesson = await getLesson(id, reqUser.id);
       return res.status(200).json(newLesson);
     } else if (lesson.lessonType === LessonType.TEXT) {
-      const { lessonName, lessonNumber, partId, trialAllowed, descriptionMD, title, content } = req.body;
+      const {
+        lessonName,
+        lessonNumber,
+        partId,
+        trialAllowed,
+        descriptionMD,
+        title,
+        content,
+      } = req.body;
 
       let thumbnail: File = null;
       const thumbnailFile = req.fileModelsWithFieldName?.thumbnail

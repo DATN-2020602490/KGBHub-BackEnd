@@ -1,9 +1,15 @@
 import { BaseController } from "../../abstractions/base.controller";
-import { CampaignUser, File, KGBRequest, KGBResponse, userSelector } from "../../global";
+import {
+  CampaignUser,
+  File,
+  KGBRequest,
+  KGBResponse,
+  userSelector,
+} from "../../global";
 import { checkRole } from "../auth/auth.service";
 import { CampaignType, RoleEnum, VoucherType } from "@prisma/client";
 import { fileMiddleware } from "../../middlewares/file.middleware";
-import { getUniqueSuffix } from "../../util/data.util";
+import { getUniqueSuffix } from "../../util";
 import checkRoleMiddleware from "../../middlewares/checkRole.middleware";
 import NotFoundException from "../../exceptions/not-found";
 import { isString } from "lodash";
@@ -35,15 +41,23 @@ export default class CampaignController extends BaseController {
       checkRoleMiddleware([RoleEnum.ADMIN]),
       this.deleteCampaign,
     );
-    this.router.post("/actions/join-campaign", KGBAuth(["jwt"]), this.joinCampaign);
-    this.router.get("/actions/my-promotion", KGBAuth(["jwt"]), this.getMyPromotion);
+    this.router.post(
+      "/actions/join-campaign",
+      KGBAuth(["jwt"]),
+      this.joinCampaign,
+    );
+    this.router.get(
+      "/actions/my-promotion",
+      KGBAuth(["jwt"]),
+      this.getMyPromotion,
+    );
   }
 
   getCampaigns = async (req: KGBRequest, res: KGBResponse) => {
     const limit = req.gp<number>("limit", 10, Number);
     const offset = req.gp<number>("offset", 0, Number);
     const orderBy = req.gp<string>("orderBy", "createdAt", String);
-    const order = req.gp<string>("direction", "desc", String);
+    const order = req.gp<string>("direction", "desc", ["asc", "desc"]);
     const search = req.query.search as string;
     const type = req.gp<CampaignType>("type", null, CampaignType);
     const where = search ? { name: { contains: search } } : {};
@@ -65,7 +79,9 @@ export default class CampaignController extends BaseController {
       }
     }
     if (!req.user || !checkRole(req.user, [RoleEnum.ADMIN])) {
-      return res.status(200).json(campaigns.filter((_) => _.active).slice(offset, offset + limit));
+      return res
+        .status(200)
+        .json(campaigns.filter((_) => _.active).slice(offset, offset + limit));
     }
     return res.status(200).json(campaigns.slice(offset, offset + limit));
   };
@@ -105,9 +121,15 @@ export default class CampaignController extends BaseController {
   createCampaign = async (req: KGBRequest, res: KGBResponse) => {
     const name = req.gp<string>("name", undefined, String);
     const description = req.gp<string>("description", undefined, String);
-    const startAt = new Date(req.gp<string | Date>("startAt", undefined, String));
+    const startAt = new Date(
+      req.gp<string | Date>("startAt", undefined, String),
+    );
     const endAt = new Date(req.gp<string | Date>("endAt", undefined, String));
-    const type = req.gp<CampaignType>("type", CampaignType.VOUCHERS, CampaignType);
+    const type = req.gp<CampaignType>(
+      "type",
+      CampaignType.VOUCHERS,
+      CampaignType,
+    );
     let cover: File = null;
     const coverFile = req.fileModelsWithFieldName?.cover
       ? req.fileModelsWithFieldName?.cover.length === 1
@@ -136,8 +158,16 @@ export default class CampaignController extends BaseController {
     if (type === CampaignType.VOUCHERS) {
       const totalFeeVoucher = req.gp<number>("totalFeeVoucher", 0, Number);
       const feeVoucherValue = req.gp<number>("feeVoucherValue", 20, Number);
-      const totalProductVoucher = req.gp<number>("totalProductVoucher", 0, Number);
-      const productVoucherValue = req.gp<number>("productVoucherValue", 20, Number);
+      const totalProductVoucher = req.gp<number>(
+        "totalProductVoucher",
+        0,
+        Number,
+      );
+      const productVoucherValue = req.gp<number>(
+        "productVoucherValue",
+        20,
+        Number,
+      );
       await this.prisma.campaign.update({
         where: { id: campaign.id },
         data: {
@@ -148,7 +178,11 @@ export default class CampaignController extends BaseController {
         },
       });
       for (let i = 0; i < totalFeeVoucher; i++) {
-        const voucherCode = await getUniqueSuffix("code", this.prisma.voucher, "fee_");
+        const voucherCode = await getUniqueSuffix(
+          "code",
+          this.prisma.voucher,
+          "fee_",
+        );
         await this.prisma.voucher.create({
           data: {
             code: voucherCode,
@@ -159,7 +193,11 @@ export default class CampaignController extends BaseController {
         });
       }
       for (let i = 0; i < totalProductVoucher; i++) {
-        const voucherCode = await getUniqueSuffix("code", this.prisma.voucher, "product_");
+        const voucherCode = await getUniqueSuffix(
+          "code",
+          this.prisma.voucher,
+          "product_",
+        );
         await this.prisma.voucher.create({
           data: {
             code: voucherCode,
@@ -176,7 +214,11 @@ export default class CampaignController extends BaseController {
         },
       });
     } else {
-      let courseIds = req.gp<{ id: string; discount: number }[] | string>("courseIds", "[]", JSON.parse);
+      let courseIds = req.gp<{ id: string; discount: number }[] | string>(
+        "courseIds",
+        "[]",
+        JSON.parse,
+      );
       if (isString(courseIds)) {
         courseIds = JSON.parse(courseIds) as { id: string; discount: number }[];
       }
@@ -220,9 +262,17 @@ export default class CampaignController extends BaseController {
       throw new NotFoundException("campaign", id);
     }
     const name = req.gp<string>("name", campaign.name, String);
-    const description = req.gp<string>("description", campaign.description, String);
-    const startAt = new Date(req.gp<string | Date>("startAt", campaign.startAt, String));
-    const endAt = new Date(req.gp<string | Date>("endAt", campaign.endAt, String));
+    const description = req.gp<string>(
+      "description",
+      campaign.description,
+      String,
+    );
+    const startAt = new Date(
+      req.gp<string | Date>("startAt", campaign.startAt, String),
+    );
+    const endAt = new Date(
+      req.gp<string | Date>("endAt", campaign.endAt, String),
+    );
     let cover: File = null;
     const coverFile = req.fileModelsWithFieldName?.cover
       ? req.fileModelsWithFieldName?.cover.length === 1
@@ -288,7 +338,10 @@ export default class CampaignController extends BaseController {
       if (campaign.campaignUsers.length >= campaign.totalVoucher) {
         return res.status(404).json({ message: "No voucher left" });
       }
-      const randomVoucherType = Math.random() > 0.5 ? VoucherType.FEE_PERCENTAGE : VoucherType.PRODUCT_PERCENTAGE;
+      const randomVoucherType =
+        Math.random() > 0.5
+          ? VoucherType.FEE_PERCENTAGE
+          : VoucherType.PRODUCT_PERCENTAGE;
       let remainingVoucher = await this.prisma.voucher.findFirst({
         where: { campaignId, type: randomVoucherType, campaignUserId: null },
       });

@@ -82,7 +82,11 @@ export const onOrderPaid = async (order: Order, io: IO) => {
       });
       for (const course of courses) {
         for (const conversation of course.conversations) {
-          if (!conversation.chatMembers.find((user) => user.userId === order.userId)) {
+          if (
+            !conversation.chatMembers.find(
+              (user) => user.userId === order.userId,
+            )
+          ) {
             const chatMember = await prisma.chatMember.create({
               data: {
                 conversationId: conversation.id,
@@ -128,7 +132,9 @@ export const updateOrderStatus = async (io: IO) => {
     if (order.expiresAt < new Date()) {
       status = OrderStatus.EXPIRED;
     } else {
-      const session = await stripe.checkout.sessions.retrieve(order.stripeCheckoutId as string);
+      const session = await stripe.checkout.sessions.retrieve(
+        order.stripeCheckoutId as string,
+      );
 
       if (session.payment_status === "paid") {
         status = OrderStatus.SUCCESS;
@@ -148,13 +154,20 @@ export const updateOrderStatus = async (io: IO) => {
       },
     });
 
-    if (order.status !== OrderStatus.SUCCESS && status === OrderStatus.SUCCESS) {
+    if (
+      order.status !== OrderStatus.SUCCESS &&
+      status === OrderStatus.SUCCESS
+    ) {
       onOrderPaid(order, io);
     }
   }
 };
 
-export const getPriceForTip = async (amount: BigNumber, tipPercent: number, currency = Currency.USD) => {
+export const getPriceForTip = async (
+  amount: BigNumber,
+  tipPercent: number,
+  currency = Currency.USD,
+) => {
   amount = BigNumber(amount.toFixed(2)).times(tipPercent / 100);
   let tipProduct = await prisma.product.findFirst({
     where: {
@@ -267,13 +280,19 @@ export const getPlatformFee = async (
 //   },
 // ]
 
-export const getPriceIdInProduct = async (productStripeId: string, amount: BigNumber, currency = Currency.USD) => {
+export const getPriceIdInProduct = async (
+  productStripeId: string,
+  amount: BigNumber,
+  currency = Currency.USD,
+) => {
   const product = await stripe.products.retrieve(productStripeId);
   if (!product) {
     return null;
   }
   const prices = (await stripe.prices.list({ product: product.id })).data;
-  const price = prices.find((p) => BigNumber(p.unit_amount).isEqualTo(amount.times(100).toNumber()));
+  const price = prices.find((p) =>
+    BigNumber(p.unit_amount).isEqualTo(amount.times(100).toNumber()),
+  );
   if (!price) {
     const newPrice = await stripe.prices.create({
       product: product.id,
@@ -285,7 +304,12 @@ export const getPriceIdInProduct = async (productStripeId: string, amount: BigNu
   return price;
 };
 
-export const createLineItems = async (userId: string, courseIds: string[], tipPercent: number, code?: string) => {
+export const createLineItems = async (
+  userId: string,
+  courseIds: string[],
+  tipPercent: number,
+  code?: string,
+) => {
   const line_items = [];
   let voucher: Voucher = null;
   if (code) {
@@ -310,7 +334,9 @@ export const createLineItems = async (userId: string, courseIds: string[], tipPe
       courseIds.splice(courseIds.indexOf(courseId), 1);
     }
   }
-  const discountProduct = voucher ? voucher.type === VoucherType.PRODUCT_PERCENTAGE : false;
+  const discountProduct = voucher
+    ? voucher.type === VoucherType.PRODUCT_PERCENTAGE
+    : false;
   let totalAmount = BigNumber(0);
   let originalAmount = BigNumber(0);
   for (const courseId of courseIds) {
@@ -327,7 +353,10 @@ export const createLineItems = async (userId: string, courseIds: string[], tipPe
     });
     let isDiscountFromCampaign = false;
     if (campaignDiscount) {
-      if (campaignDiscount.campaign.startAt > new Date() || campaignDiscount.campaign.endAt < new Date()) {
+      if (
+        campaignDiscount.campaign.startAt > new Date() ||
+        campaignDiscount.campaign.endAt < new Date()
+      ) {
         if (
           await prisma.campaignUser.findFirst({
             where: { campaignId: campaignDiscount.campaignId, userId },
@@ -351,14 +380,19 @@ export const createLineItems = async (userId: string, courseIds: string[], tipPe
         .dividedBy(100);
     }
 
-    const priceId = await getPriceIdInProduct(product.productStripeId, latestPrice);
+    const priceId = await getPriceIdInProduct(
+      product.productStripeId,
+      latestPrice,
+    );
     totalAmount = totalAmount.plus(latestPrice);
     line_items.push({
       price: priceId.id as string,
       quantity: 1,
     });
   }
-  const feeDiscount = voucher ? voucher.type === VoucherType.FEE_PERCENTAGE : false;
+  const feeDiscount = voucher
+    ? voucher.type === VoucherType.FEE_PERCENTAGE
+    : false;
 
   const { price: platformFee, originalFee } = await getPlatformFee(
     BigNumber(totalAmount),

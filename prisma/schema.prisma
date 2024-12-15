@@ -614,8 +614,8 @@ model File {
   filesize     String
   mimetype     String
 
-  ownerId String
-  owner   User   @relation(fields: [ownerId], references: [id])
+  ownerId String?
+  owner   User?   @relation(fields: [ownerId], references: [id])
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt

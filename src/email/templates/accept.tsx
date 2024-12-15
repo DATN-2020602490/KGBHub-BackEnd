@@ -1,4 +1,4 @@
-import React, { SVGProps } from 'react';
+import React, { SVGProps } from "react";
 import {
   Body,
   Container,
@@ -9,29 +9,29 @@ import {
   Tailwind,
   Text,
   Img,
-} from '@react-email/components';
+} from "@react-email/components";
 
-const AcceptForm = ({ userFirstName = 'User' }) => (
+const AcceptForm = ({ userFirstName = "User" }) => (
   <Html>
     <Head />
     <Preview>Verify your account</Preview>
     <Tailwind>
       <Body className={main}>
-        <Container className={container} style={{ maxWidth: 'unset' }}>
+        <Container className={container} style={{ maxWidth: "unset" }}>
           <div className="bg-blue-500 px-4 mb-2 relative">
             <Link
-              href="https://dkelearning.vercel.app"
+              href="https://kgb-hub.harmoury.space"
               className="flex text-white gap-x-2"
-              style={{ display: 'flex' }}
+              style={{ display: "flex" }}
             >
               <img
                 src="https://i.imgur.com/spX3OOe.png"
                 alt=""
                 className="absolute top-2/4 -translate-y-2/4"
-                style={{ height: '26px', objectFit: 'cover' }}
+                style={{ height: "26px", objectFit: "cover" }}
               />
               <p className="ml-10 font-semibold text-lg leading-none">
-                Dang Khai
+                KGB Hub
               </p>
             </Link>
           </div>
@@ -47,8 +47,8 @@ const AcceptForm = ({ userFirstName = 'User' }) => (
             Dear <b>{userFirstName}</b>,
           </Text>
           <Text className="text-start text-dm">
-            We are thrilled to inform you that you have been selected for the{' '}
-            <b>Instructor</b> position at <b>Dang Khai Education</b>!
+            We are thrilled to inform you that you have been selected for the{" "}
+            <b>Instructor</b> position at <b>KGB Hub</b>!
           </Text>
           <Text className="text-start text-dm">
             Your outstanding performance throughout the recruitment process
@@ -57,8 +57,7 @@ const AcceptForm = ({ userFirstName = 'User' }) => (
           </Text>
           <Text className="text-start text-dm">
             Please logging back in, you will notice the updated role and access
-            to employee-exclusive systems and resources within{' '}
-            <b>Dang Khai Education</b>.
+            to employee-exclusive systems and resources within <b>KGB Hub</b>.
           </Text>
           <Text className="text-start text-dm">
             We are genuinely excited to have you join our team and look forward
@@ -67,10 +66,10 @@ const AcceptForm = ({ userFirstName = 'User' }) => (
           <Text className="text-start text-dm">
             Sincerely,
             <br />
-            <b>Dang Khai Education</b>
+            <b>KGB Hub</b>
           </Text>
           <div className="bg-slate-300 py-4 mt-4 text-sm text-center">
-            Copyright © 2024 Dang Khai Education. All rights reserved.
+            Copyright © 2024 KGB Hub. All rights reserved.
           </div>
         </Container>
       </Body>
@@ -82,5 +81,5 @@ export default AcceptForm;
 
 const main = `bg-white font-['-apple-system,BlinkMacSystemFont,"Segoe_UI",Roboto,Oxygen-Sans,Ubuntu,Cantarell,"Helvetica_Neue",sans-serif'] text-black`;
 // const container = 'p-5 pb-12 w-[60%]';
-const container = 'p-5 pb-12 px-15 max-w-screen-sm';
-const paragraph = 'text-base leading-[26px] text-start';
+const container = "p-5 pb-12 px-15 max-w-screen-sm";
+const paragraph = "text-base leading-[26px] text-start";

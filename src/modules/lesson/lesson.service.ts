@@ -2,7 +2,11 @@ import { LessonStatus } from "@prisma/client";
 import prisma from "../../configs/prisma";
 import { refreshCourse } from "../course/course.service";
 
-export const getLesson = async (id: string, userId: string, requireParentId = true) => {
+export const getLesson = async (
+  id: string,
+  userId: string,
+  requireParentId = true,
+) => {
   const lesson = await prisma.lesson.findFirst({
     where: { id, userId },
   });
@@ -22,7 +26,12 @@ export const getLesson = async (id: string, userId: string, requireParentId = tr
   }
   return lesson;
 };
-export const getLessons = async (id: string, limit: number, offset: number, status: LessonStatus) => {
+export const getLessons = async (
+  id: string,
+  limit: number,
+  offset: number,
+  status: LessonStatus,
+) => {
   const where = {};
   where["userId"] = id;
   if (status) {

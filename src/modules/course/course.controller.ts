@@ -18,19 +18,35 @@ import { KGBRequest } from "../../global";
 import stripe from "../../configs/stripe";
 import BigNumber from "bignumber.js";
 import { fileMiddleware } from "../../middlewares/file.middleware";
-import { deleteCourse, deletePart, getCourse, getCourses, refreshPart } from "./course.service";
-import { generateRandomString } from "../../util/common.util";
+import {
+  deleteCourse,
+  deletePart,
+  getCourse,
+  getCourses,
+  refreshPart,
+} from "./course.service";
 import { convert } from "html-to-text";
 import { isString } from "lodash";
+import { generateRandomString } from "../../util";
 
 export default class CourseController extends BaseController {
   public path = "/api/v1/courses";
 
   public initializeRoutes() {
-    this.router.post(`/`, KGBAuth("jwt"), checkRoleMiddleware([RoleEnum.ADMIN, RoleEnum.AUTHOR]), this.createCourse);
+    this.router.post(
+      `/`,
+      KGBAuth("jwt"),
+      checkRoleMiddleware([RoleEnum.ADMIN, RoleEnum.AUTHOR]),
+      this.createCourse,
+    );
     this.router.get(`/`, KGBAuth("jwt"), this.getCourses);
     this.router.get(`/:id`, KGBAuth("jwt"), this.getCourse);
-    this.router.patch(`/:id`, KGBAuth("jwt"), fileMiddleware([{ name: "thumbnail", maxCount: 1 }]), this.updateCourse);
+    this.router.patch(
+      `/:id`,
+      KGBAuth("jwt"),
+      fileMiddleware([{ name: "thumbnail", maxCount: 1 }]),
+      this.updateCourse,
+    );
     this.router.delete(`/:id`, KGBAuth("jwt"), this.deleteCourse);
     this.router.post(`/:id/parts`, KGBAuth("jwt"), this.createPart);
     this.router.get(`/:id/parts`, this.getParts);
@@ -128,7 +144,11 @@ export default class CourseController extends BaseController {
   getCourse = async (req: KGBRequest, res: KGBResponse) => {
     const reqUser = req.user;
     const id = req.gp<string>("id", undefined, String);
-    const course = await getCourse(id, reqUser.id, !!reqUser.roles.find((role) => role.role.name === RoleEnum.ADMIN));
+    const course = await getCourse(
+      id,
+      reqUser.id,
+      !!reqUser.roles.find((role) => role.role.name === RoleEnum.ADMIN),
+    );
     if (!course) {
       throw new NotFoundException("course", id);
     }
@@ -158,19 +178,37 @@ export default class CourseController extends BaseController {
     } else {
       thumbnail = { id: course.thumbnailFileId } as File;
     }
-    if (!(course?.userId === req.user.id || req.user.roles.find((role) => role.role.name === RoleEnum.ADMIN))) {
+    if (
+      !(
+        course?.userId === req.user.id ||
+        req.user.roles.find((role) => role.role.name === RoleEnum.ADMIN)
+      )
+    ) {
       throw new HttpException(401, "Access denied");
     }
     const courseName = req.gp<string>("courseName", course.courseName, String);
-    const descriptionMD = req.gp<string>("descriptionMD", course.descriptionMD, String);
-    const category = req.gp<CourseCategory>("category", course.category, CourseCategory);
-    const isPublic = req.gp<string>("isPublic", String(course.isPublic), String) === "true";
-    const priceAmount = parseFloat(req.gp<string>("priceAmount", String(course.priceAmount), String));
+    const descriptionMD = req.gp<string>(
+      "descriptionMD",
+      course.descriptionMD,
+      String,
+    );
+    const category = req.gp<CourseCategory>(
+      "category",
+      course.category,
+      CourseCategory,
+    );
+    const isPublic =
+      req.gp<string>("isPublic", String(course.isPublic), String) === "true";
+    const priceAmount = parseFloat(
+      req.gp<string>("priceAmount", String(course.priceAmount), String),
+    );
     let knowledgeGained = req.body.knowledgeGained || course.knowledgeGained;
     if (isString(knowledgeGained)) {
       knowledgeGained = JSON.parse(knowledgeGained as string) as string[];
     }
-    if (!(courseName && knowledgeGained.length > 0 && descriptionMD && category)) {
+    if (
+      !(courseName && knowledgeGained.length > 0 && descriptionMD && category)
+    ) {
       return new HttpException(400, "missing required fields");
     }
 
@@ -231,7 +269,12 @@ export default class CourseController extends BaseController {
     if (!course) {
       throw new NotFoundException("course", id);
     }
-    if (!(course.userId === reqUser.id || reqUser.roles.find((role) => role.role.name === RoleEnum.ADMIN))) {
+    if (
+      !(
+        course.userId === reqUser.id ||
+        reqUser.roles.find((role) => role.role.name === RoleEnum.ADMIN)
+      )
+    ) {
       throw new HttpException(403, "Forbidden");
     }
     await deleteCourse(id);
@@ -252,7 +295,12 @@ export default class CourseController extends BaseController {
     if (!course) {
       throw new NotFoundException("course", courseId);
     }
-    if (!(course.userId === reqUser.id || reqUser.roles.find((_) => _.role.name === RoleEnum.ADMIN))) {
+    if (
+      !(
+        course.userId === reqUser.id ||
+        reqUser.roles.find((_) => _.role.name === RoleEnum.ADMIN)
+      )
+    ) {
       throw new Error("Not authorized");
     }
     const _ = await this.prisma.part.findFirst({
@@ -298,7 +346,12 @@ export default class CourseController extends BaseController {
     if (!course) {
       throw new NotFoundException("course", courseId);
     }
-    if (!(course.userId === reqUser.id || reqUser.roles.find((_) => _.role.name === RoleEnum.ADMIN))) {
+    if (
+      !(
+        course.userId === reqUser.id ||
+        reqUser.roles.find((_) => _.role.name === RoleEnum.ADMIN)
+      )
+    ) {
       throw new Error("Not authorized");
     }
     const part = await this.prisma.part.findFirst({
@@ -330,7 +383,12 @@ export default class CourseController extends BaseController {
     if (!course) {
       throw new NotFoundException("course", courseId);
     }
-    if (!(course.userId === reqUser.id || reqUser.roles.find((_) => _.role.name === RoleEnum.ADMIN))) {
+    if (
+      !(
+        course.userId === reqUser.id ||
+        reqUser.roles.find((_) => _.role.name === RoleEnum.ADMIN)
+      )
+    ) {
       throw new Error("Not authorized");
     }
     const part = await this.prisma.part.findFirst({
@@ -360,7 +418,12 @@ export default class CourseController extends BaseController {
     if (!course) {
       throw new NotFoundException("course", courseId);
     }
-    if (!(course.userId === reqUser.id || reqUser.roles.find((_) => _.role.name === RoleEnum.ADMIN))) {
+    if (
+      !(
+        course.userId === reqUser.id ||
+        reqUser.roles.find((_) => _.role.name === RoleEnum.ADMIN)
+      )
+    ) {
       throw new Error("Not authorized");
     }
     const part = await this.prisma.part.findFirst({
