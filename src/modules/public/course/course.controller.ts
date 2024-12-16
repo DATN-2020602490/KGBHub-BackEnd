@@ -9,6 +9,7 @@ import {
   RoleEnum,
 } from "@prisma/client";
 import { Course, KGBRequest, KGBResponse, userSelector } from "../../../global";
+import { removeAccent } from "../../../util";
 
 export default class PublicCourseController extends BaseController {
   public path = "/api/v1-public/courses";
@@ -21,7 +22,7 @@ export default class PublicCourseController extends BaseController {
   getCourses = async (req: KGBRequest, res: KGBResponse) => {
     const limit = Number(req.query.limit) || 12;
     const offset = Number(req.query.offset) || 0;
-    const search = req.query.search as string;
+    const search = req.gp<string>("search", null, String);
     const categories = req.query.categories || "";
     const orderBy = (req.query.orderBy as string) || "createdAt";
     const direction = (req.query.direction as "asc" | "desc") || "desc";
@@ -69,22 +70,10 @@ export default class PublicCourseController extends BaseController {
     if (search) {
       query.where.OR = [
         {
-          courseName: {
-            contains: search,
-            mode: "insensitive",
-          },
+          searchAccent: { contains: removeAccent(search) },
         },
         {
-          descriptionMD: {
-            contains: search,
-            mode: "insensitive",
-          },
-        },
-        {
-          user: { firstName: { contains: search, mode: "insensitive" } },
-        },
-        {
-          user: { lastName: { contains: search, mode: "insensitive" } },
+          user: { searchAccent: { contains: removeAccent(search) } },
         },
       ];
     }

@@ -13,6 +13,8 @@ import {
 } from "../global";
 import { CourseStatus, MemberStatus, UserView } from "@prisma/client";
 import prisma from "../configs/prisma";
+import { removeAccent } from "../util";
+import { updateSearchAccent } from "../util/searchAccent";
 
 class IO {
   public io: SocketServer;
@@ -552,6 +554,7 @@ class IO {
                   : undefined,
             },
           });
+          await updateSearchAccent("message", message.id);
           if (attachments) {
             for (const _ of attachments) {
               await this.prisma.attachment.update({

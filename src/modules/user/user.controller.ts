@@ -1,5 +1,5 @@
 import { BaseController } from "../../abstractions/base.controller";
-import { KGBResponse } from "../../global";
+import { KGBResponse, userSelector } from "../../global";
 import { KGBAuth } from "../../configs/passport";
 import HttpException from "../../exceptions/http-exception";
 import NotFoundException from "../../exceptions/not-found";
@@ -11,6 +11,8 @@ import {
 } from "@prisma/client";
 import { File, KGBRequest } from "../../global";
 import { fileMiddleware } from "../../middlewares/file.middleware";
+import { normalizeEmail, removeAccent } from "../../util";
+import { updateSearchAccent } from "../../util/searchAccent";
 
 export default class UserController extends BaseController {
   public path = "/api/v1/users";
@@ -47,6 +49,7 @@ export default class UserController extends BaseController {
     this.router.get(`/actions/progress`, KGBAuth("jwt"), this.getProgress);
     this.router.get(`/actions/forms`, KGBAuth("jwt"), this.getMyForms);
     this.router.patch(`/actions/forms`, KGBAuth("jwt"), this.updateMyForm);
+    this.router.get(`/actions/author-search/:search`, this.searchAuthor);
   }
 
   getUsers = async (req: KGBRequest, res: KGBResponse) => {
@@ -142,6 +145,7 @@ export default class UserController extends BaseController {
       where: { id: id },
       data,
     });
+    await updateSearchAccent("user", id);
     return res.status(200).send(updateUser);
   };
 
@@ -312,7 +316,7 @@ export default class UserController extends BaseController {
   };
   getRated = async (req: KGBRequest, res: KGBResponse) => {
     const reqUser = req.user;
-    const limit = req.gp<number>("limit", 10, Number);
+    const limit = req.gp<number>("limit", 12, Number);
     const offset = req.gp<number>("offset", 0, Number);
     const courseId = req.gp<string>("courseId", null, String);
     if (courseId) {
@@ -394,5 +398,24 @@ export default class UserController extends BaseController {
       },
     });
     return res.status(200).json(submitForm);
+  };
+
+  searchAuthor = async (req: KGBRequest, res: KGBResponse) => {
+    const search = req.gp<string>("search", null, String);
+    const limit = req.gp<number>("limit", 12, Number);
+    const offset = req.gp<number>("offset", 0, Number);
+    const where = {
+      roles: { some: { role: { name: RoleEnum.AUTHOR } } },
+    };
+    if (search) {
+      where["searchAccent"] = { contains: removeAccent(search) };
+    }
+    const users = await this.prisma.user.findMany({
+      where,
+      select: userSelector.select,
+      take: limit,
+      skip: offset,
+    });
+    return res.status(200).json(users);
   };
 }

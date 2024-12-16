@@ -9,11 +9,12 @@ import {
 import { checkRole } from "../auth/auth.service";
 import { CampaignType, RoleEnum, VoucherType } from "@prisma/client";
 import { fileMiddleware } from "../../middlewares/file.middleware";
-import { getUniqueSuffix } from "../../util";
+import { getUniqueSuffix, removeAccent } from "../../util";
 import checkRoleMiddleware from "../../middlewares/checkRole.middleware";
 import NotFoundException from "../../exceptions/not-found";
 import { isString } from "lodash";
 import { KGBAuth } from "../../configs/passport";
+import { updateSearchAccent } from "../../util/searchAccent";
 
 export default class CampaignController extends BaseController {
   public path = "/api/v1/campaigns";
@@ -54,13 +55,16 @@ export default class CampaignController extends BaseController {
   }
 
   getCampaigns = async (req: KGBRequest, res: KGBResponse) => {
-    const limit = req.gp<number>("limit", 10, Number);
+    const limit = req.gp<number>("limit", 12, Number);
     const offset = req.gp<number>("offset", 0, Number);
     const orderBy = req.gp<string>("orderBy", "createdAt", String);
     const order = req.gp<string>("direction", "desc", ["asc", "desc"]);
-    const search = req.query.search as string;
+    const search = req.gp<string>("search", null, String);
     const type = req.gp<CampaignType>("type", null, CampaignType);
-    const where = search ? { name: { contains: search } } : {};
+    const where = {};
+    if (search) {
+      where["searchAccent"] = { contains: removeAccent(search) };
+    }
     if (type) {
       where["type"] = type;
     }
@@ -155,6 +159,7 @@ export default class CampaignController extends BaseController {
         type,
       },
     });
+    await updateSearchAccent("campaign", campaign.id);
     if (type === CampaignType.VOUCHERS) {
       const totalFeeVoucher = req.gp<number>("totalFeeVoucher", 0, Number);
       const feeVoucherValue = req.gp<number>("feeVoucherValue", 20, Number);
@@ -297,6 +302,7 @@ export default class CampaignController extends BaseController {
         coverFileId: cover.id,
       },
     });
+    await updateSearchAccent("campaign", _.id);
     return res.status(200).json(_);
   };
 

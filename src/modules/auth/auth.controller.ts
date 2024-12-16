@@ -11,7 +11,8 @@ import HttpException from "../../exceptions/http-exception";
 import { KGBRequest, User } from "../../global";
 import { Platform, RoleEnum } from "@prisma/client";
 import { downloadImage } from "../../configs/multer";
-import { getUniqueSuffix, normalizeEmail } from "../../util";
+import { getUniqueSuffix, normalizeEmail, removeAccent } from "../../util";
+import { updateSearchAccent } from "../../util/searchAccent";
 
 export default class AuthController extends BaseController {
   public path = "/api/v1/auth";
@@ -80,7 +81,6 @@ export default class AuthController extends BaseController {
           email,
           firstName: given_name,
           lastName: family_name,
-
           roles: {
             create: {
               role: {
@@ -93,6 +93,7 @@ export default class AuthController extends BaseController {
           platform: Platform.GOOGLE,
         },
       });
+      await updateSearchAccent("user", _.id);
       await this.prisma.cart.create({
         data: {
           userId: _.id,

@@ -3,7 +3,8 @@ import HttpException from "../../exceptions/http-exception";
 import prisma from "../../configs/prisma";
 import IO from "../../socket/io";
 import { User } from "../../global";
-import { getUniqueSuffix } from "../../util";
+import { getUniqueSuffix, removeAccent } from "../../util";
+import { updateSearchAccent } from "../../util/searchAccent";
 
 export const createChat = async (body: any, reqUser: User, io: IO) => {
   const conversationType = body.conversationType as ConversationType;
@@ -37,6 +38,7 @@ export const createChat = async (body: any, reqUser: User, io: IO) => {
         }
         const conversation = await prisma.conversation.create({
           data: {
+            conversationName: "Cloud Save",
             conversationType: ConversationType.CLOUD_SAVE,
             roomId: `cloud_save_${userId}`,
             chatMembers: {
@@ -108,6 +110,7 @@ export const createChat = async (body: any, reqUser: User, io: IO) => {
           },
         },
       });
+      await updateSearchAccent("conversation", conversation.id);
       const sockets: any[] = await io.io
         .of(io.chatNamespaceRouter)
         .fetchSockets();
@@ -179,6 +182,7 @@ export const createChat = async (body: any, reqUser: User, io: IO) => {
           },
         },
       });
+      await updateSearchAccent("conversation", conversation.id);
       const sockets: any[] = await io.io
         .of(io.chatNamespaceRouter)
         .fetchSockets();

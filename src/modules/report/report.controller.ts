@@ -61,7 +61,7 @@ export default class ReportController extends BaseController {
     const endDate = new Date(
       req.gp<string | Date>("endDate", new Date(), String),
     );
-    const authorId = req.gp<string>("authorId", req.user.id, Number);
+    const authorId = req.gp<string>("authorId", req.user.id, String);
     const _ = (await this.prisma.coursesPaid.findMany({
       where: {
         isFree: false,

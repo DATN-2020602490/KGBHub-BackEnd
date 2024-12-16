@@ -12,6 +12,8 @@ import {
 } from "@prisma/client";
 import { fileMiddleware } from "../../middlewares/file.middleware";
 import { KGBAuth } from "../../configs/passport";
+import { removeAccent } from "../../util";
+import { updateSearchAccent } from "../../util/searchAccent";
 export default class ChatController extends BaseController {
   public path = "/api/v1/chats";
 
@@ -248,6 +250,7 @@ export default class ChatController extends BaseController {
         avatarFileId: avatar ?? conversation.avatarFileId,
       },
     });
+    await updateSearchAccent("conversation", cvs.id);
     res.status(200).json(cvs);
     const chatMembers = await this.prisma.chatMember.findMany({
       where: { conversationId, status: MemberStatus.ACTIVE },
@@ -631,6 +634,7 @@ export default class ChatController extends BaseController {
           // conversation: { connect: { id: conversation.id } },
         },
       });
+      await updateSearchAccent("attachment", __.id);
       _.push(__);
     }
     res.status(200).json(_);

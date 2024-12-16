@@ -1,7 +1,8 @@
-import { CourseStatus, LessonType } from "@prisma/client";
+import { ConversationType, CourseStatus, LessonType } from "@prisma/client";
 import prisma from "../../configs/prisma";
 import { userSelector } from "../../global";
 import getVideoDurationInSeconds from "get-video-duration";
+import { removeAccent } from "../../util";
 
 export const refreshCourse = async (id: string) => {
   if (!id) return;
@@ -142,11 +143,8 @@ export const getCourses = async (
     where["userId"] = id;
   }
   if (search) {
-    where["courseName"] = {
-      contains: search,
-    };
-    where["descriptionMD"] = {
-      contains: search,
+    where["searchAccent"] = {
+      contains: removeAccent(search),
     };
   }
   const courses = await prisma.course.findMany({
@@ -189,6 +187,38 @@ export const refreshPart = async (courseId: string) => {
 
 export const deleteCourse = async (id: string) => {
   try {
+    await prisma.chatMembersOnMessages.deleteMany({
+      where: {
+        message: {
+          conversation: {
+            course: { id },
+            conversationType: ConversationType.COURSE_GROUP_CHAT,
+          },
+        },
+      },
+    });
+    await prisma.message.deleteMany({
+      where: {
+        conversation: {
+          course: { id },
+          conversationType: ConversationType.COURSE_GROUP_CHAT,
+        },
+      },
+    });
+    await prisma.chatMember.deleteMany({
+      where: {
+        conversation: {
+          course: { id },
+          conversationType: ConversationType.COURSE_GROUP_CHAT,
+        },
+      },
+    });
+    await prisma.conversation.deleteMany({
+      where: {
+        course: { id },
+        conversationType: ConversationType.COURSE_GROUP_CHAT,
+      },
+    });
     await prisma.heart.deleteMany({ where: { courseId: id } });
     const parts = await prisma.part.findMany({
       where: { courseId: id },

@@ -9,6 +9,8 @@ import { KGBRequest, File } from "../../global";
 import { fileMiddleware } from "../../middlewares/file.middleware";
 import { deleteLesson, getLesson, getLessons } from "./lesson.service";
 import { refreshCourse } from "../course/course.service";
+import { removeAccent } from "../../util";
+import { updateSearchAccent } from "../../util/searchAccent";
 
 export default class LessonController extends BaseController {
   public path = "/api/v1/lessons";
@@ -101,6 +103,7 @@ export default class LessonController extends BaseController {
           thumbnailFileId: (thumbnail as File).id,
         },
       });
+      await updateSearchAccent("lesson", lesson.id);
       const newLesson = await getLesson(lesson.id, reqUser.id);
       res.status(200).json(newLesson);
       await this.prisma.course.update({
@@ -153,6 +156,7 @@ export default class LessonController extends BaseController {
           thumbnailFileId: (thumbnail as File).id,
         },
       });
+      await updateSearchAccent("lesson", lesson.id);
       const newLesson = await getLesson(lesson.id, reqUser.id);
       res.status(200).json(newLesson);
       await refreshCourse(courseId);
@@ -248,6 +252,7 @@ export default class LessonController extends BaseController {
         include: { part: true },
       });
       const newLesson = await getLesson(id, reqUser.id);
+      await updateSearchAccent("lesson", id);
       return res.status(200).json(newLesson);
     } else if (lesson.lessonType === LessonType.TEXT) {
       const {
@@ -282,13 +287,16 @@ export default class LessonController extends BaseController {
           part: { connect: { id: partId || lesson.partId } },
           trialAllowed: trialAllowed || lesson.trialAllowed,
           descriptionMD: descriptionMD || lesson.descriptionMD,
-          status: LessonStatus.PENDING,
+          // status: LessonStatus.PENDING,
           title: title || lesson.title,
           content: content || lesson.content,
         },
         include: { part: true },
       });
+
       const newLesson = await getLesson(id, reqUser.id);
+
+      await updateSearchAccent("lesson", id);
       return res.status(200).json(newLesson);
     } else {
       throw new HttpException(400, "Invalid lesson type");

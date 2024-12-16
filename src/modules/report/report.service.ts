@@ -1,4 +1,9 @@
-import { CoursesPaid, Order, ReportData } from "../../global";
+import {
+  CoursesPaid,
+  GLOBAL_REVENUE_SHARE,
+  Order,
+  ReportData,
+} from "../../global";
 
 export const groupOrdersByDate = (
   orders: any[],
@@ -58,8 +63,8 @@ export const processOrdersReportAuthor = (
       coursePaid.order.originalAmount,
       coursePaid.order.amount,
     );
-    order.amount = salePrice;
-    order.originalAmount = coursePaid.course.priceAmount;
+    order.amount = salePrice * GLOBAL_REVENUE_SHARE;
+    order.originalAmount = coursePaid.course.priceAmount * GLOBAL_REVENUE_SHARE;
     orders.push(order);
   }
   return groupOrdersByDate(orders, groupBy, false);

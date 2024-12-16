@@ -13,6 +13,7 @@ import {
   ProductType,
   ConversationType,
   ChatMemberRole,
+  OrderStatus,
 } from "@prisma/client";
 import { KGBRequest } from "../../global";
 import stripe from "../../configs/stripe";
@@ -27,7 +28,8 @@ import {
 } from "./course.service";
 import { convert } from "html-to-text";
 import { isString } from "lodash";
-import { generateRandomString } from "../../util";
+import { generateRandomString, removeAccent } from "../../util";
+import { updateSearchAccent } from "../../util/searchAccent";
 
 export default class CourseController extends BaseController {
   public path = "/api/v1/courses";
@@ -90,6 +92,7 @@ export default class CourseController extends BaseController {
         user: { connect: { id: req.user.id } },
       },
     });
+    await updateSearchAccent("course", newCourse.id);
     await this.prisma.product.create({
       data: {
         productStripeId: product.id,
@@ -111,6 +114,7 @@ export default class CourseController extends BaseController {
         conversationType: ConversationType.COURSE_GROUP_CHAT,
       },
     });
+    await updateSearchAccent("course", course.id);
     await this.prisma.chatMember.create({
       data: {
         userId: reqUser.id,
@@ -231,11 +235,12 @@ export default class CourseController extends BaseController {
         totalPart: parts.length,
         thumbnailFileId: thumbnail.id,
         totalLesson: lessonsLength,
-        status: CourseStatus.PENDING,
+        // status: CourseStatus.PENDING,
         priceAmount: priceAmount || 0,
         currency: Currency.USD,
       },
     });
+    await updateSearchAccent("course", id);
     await this.prisma.product.update({
       where: { id: course.products[0].id },
       data: {
@@ -260,6 +265,7 @@ export default class CourseController extends BaseController {
         conversationType: ConversationType.COURSE_GROUP_CHAT,
       },
     });
+    await updateSearchAccent("course", id);
   };
 
   deleteCourse = async (req: KGBRequest, res: KGBResponse) => {
@@ -269,14 +275,31 @@ export default class CourseController extends BaseController {
     if (!course) {
       throw new NotFoundException("course", id);
     }
+
     if (
-      !(
-        course.userId === reqUser.id ||
-        reqUser.roles.find((role) => role.role.name === RoleEnum.ADMIN)
-      )
+      course.userId !== reqUser.id &&
+      !reqUser.roles.some((role) => role.role.name === RoleEnum.ADMIN)
     ) {
-      throw new HttpException(403, "Forbidden");
+      throw new HttpException(401, "Access denied");
     }
+
+    const coursePaids = await this.prisma.coursesPaid.findMany({
+      where: { courseId: course.id },
+      include: {
+        order: true,
+      },
+    });
+
+    if (
+      coursePaids.some(
+        (paid) => paid.isFree || paid.order.status === OrderStatus.SUCCESS,
+      ) &&
+      course.userId === reqUser.id &&
+      !reqUser.roles.some((role) => role.role.name === RoleEnum.ADMIN)
+    ) {
+      throw new HttpException(400, "Course has been paid");
+    }
+
     await deleteCourse(id);
     return res.status(200).json(course);
   };

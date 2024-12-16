@@ -1,6 +1,8 @@
 import {
   CampaignType,
   ChatMemberRole,
+  ConversationType,
+  Currency,
   OrderStatus,
   RoleEnum,
   VoucherType,
@@ -11,6 +13,8 @@ import { convert } from "html-to-text";
 import { getPlatformFee } from "./modules/stripe/stripe.service";
 import BigNumber from "bignumber.js";
 import { refreshCourse } from "./modules/course/course.service";
+import { removeAccent } from "./util";
+import { updateSearchAccent } from "./util/searchAccent";
 
 type MigrateFunction = () => void;
 
@@ -252,6 +256,100 @@ migrate.add("add_original_name", async () => {
       where: { id: attachment.id },
       data: { originalName: file.originalName },
     });
+  }
+});
+
+migrate.add("re_stripe", async () => {
+  const courses = await prisma.course.findMany({});
+  for (const course of courses) {
+    const product = await stripe.products.create({
+      name: course.courseName,
+      description: course.courseName,
+      metadata: {
+        userId: course.userId,
+      },
+      active: true,
+      default_price_data: {
+        currency: Currency.USD,
+        unit_amount_decimal: String(0 * 100),
+      },
+    });
+    await prisma.product.updateMany({
+      where: { courseId: course.id },
+      data: {
+        productStripeId: product.id,
+      },
+    });
+  }
+});
+
+migrate.add("remove_trash_data", async () => {
+  await prisma.chatMembersOnMessages.deleteMany({
+    where: {
+      message: {
+        conversation: {
+          conversationType: ConversationType.COURSE_GROUP_CHAT,
+          courseId: null,
+        },
+      },
+    },
+  });
+  await prisma.message.deleteMany({
+    where: {
+      conversation: {
+        conversationType: ConversationType.COURSE_GROUP_CHAT,
+        courseId: null,
+      },
+    },
+  });
+  await prisma.chatMember.deleteMany({
+    where: {
+      conversation: {
+        conversationType: ConversationType.COURSE_GROUP_CHAT,
+        courseId: null,
+      },
+    },
+  });
+  await prisma.conversation.deleteMany({
+    where: {
+      conversationType: ConversationType.COURSE_GROUP_CHAT,
+      courseId: null,
+    },
+  });
+});
+
+migrate.add("add_search_accent", async () => {
+  const users = await prisma.user.findMany({});
+  for (const user of users) {
+    await updateSearchAccent("user", user.id);
+  }
+  const lessons = await prisma.lesson.findMany({});
+  for (const lesson of lessons) {
+    await updateSearchAccent("lesson", lesson.id);
+  }
+  const courses = await prisma.course.findMany({});
+  for (const course of courses) {
+    await updateSearchAccent("course", course.id);
+  }
+  const conversations = await prisma.conversation.findMany({});
+  for (const conversation of conversations) {
+    await updateSearchAccent("conversation", conversation.id);
+  }
+  const messages = await prisma.message.findMany({});
+  for (const message of messages) {
+    await updateSearchAccent("message", message.id);
+  }
+  const comments = await prisma.comment.findMany({});
+  for (const comment of comments) {
+    await updateSearchAccent("comment", comment.id);
+  }
+  const campaigns = await prisma.campaign.findMany({});
+  for (const campaign of campaigns) {
+    await updateSearchAccent("campaign", campaign.id);
+  }
+  const attachments = await prisma.attachment.findMany({});
+  for (const attachment of attachments) {
+    await updateSearchAccent("attachment", attachment.id);
   }
 });
 

@@ -22,9 +22,9 @@ export default class ReportMockController extends BaseController {
     const currentDate = new Date(startDate);
 
     // Limit maximum range to 1 year to prevent overload
-    const maxEndDate = new Date(startDate);
-    maxEndDate.setFullYear(startDate.getFullYear() + 1);
-    endDate = endDate > maxEndDate ? maxEndDate : endDate;
+    // const maxEndDate = new Date(startDate);
+    // maxEndDate.setFullYear(startDate.getFullYear() + 1);
+    // endDate = endDate > maxEndDate ? maxEndDate : endDate;
 
     while (currentDate <= endDate) {
       if (groupBy === "day") {

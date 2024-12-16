@@ -1,5 +1,7 @@
 import { existsSync } from "fs";
 import prisma from "../configs/prisma";
+import removeAccents from "remove-accents";
+import { htmlToText } from "html-to-text";
 
 const SLUG_REGEX = /^[a-z0-9-_.]+$/;
 const USERNAME_REGEX = /^[a-zA-Z0-9_.-]+$/;
@@ -79,4 +81,42 @@ export const defaultImage = async (): Promise<void> => {
       },
     });
   }
+};
+
+export const filterDeletedRecords = (data) => {
+  if (Array.isArray(data)) {
+    return data.filter((item) => !item.deletedAt).map(filterDeletedRecords);
+  } else if (data && typeof data === "object") {
+    for (const key in data) {
+      if (
+        data[key] &&
+        (Array.isArray(data[key]) || typeof data[key] === "object")
+      ) {
+        data[key] = filterDeletedRecords(data[key]);
+      }
+    }
+    return data.deletedAt ? null : data;
+  }
+  return data;
+};
+
+export const removeAccent = (text) => {
+  return htmlToText(
+    text
+      .normalize("NFD")
+      .replace(/[\u0300\u0301\u0303\u0309\u0323]/g, "")
+      .replace(/[\u02C6\u0306\u031B]/g, "")
+      .replace(/[đĐ]/g, (d) => (d === "đ" ? "d" : "D"))
+      .normalize("NFC")
+      .toLowerCase()
+      .replace(/à|á|ạ|ả|ã|â|ầ|ấ|ậ|ẩ|ẫ|ă|ằ|ắ|ặ|ẳ|ẵ/g, "a")
+      .replace(/è|é|ẹ|ẻ|ẽ|ê|ề|ế|ệ|ể|ễ/g, "e")
+      .replace(/ì|í|ị|ỉ|ĩ/g, "i")
+      .replace(/ò|ó|ọ|ỏ|õ|ô|ồ|ố|ộ|ổ|ỗ|ơ|ờ|ớ|ợ|ở|ỡ/g, "o")
+      .replace(/ù|ú|ụ|ủ|ũ|ư|ừ|ứ|ự|ử|ữ/g, "u")
+      .replace(/ỳ|ý|ỵ|ỷ|ỹ/g, "y")
+      .replace(/đ/g, "d")
+      .replace(/\s+/g, " ")
+      .replace(/[^a-zA-Z0-9]/g, ""),
+  );
 };

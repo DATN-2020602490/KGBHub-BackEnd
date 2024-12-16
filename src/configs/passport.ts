@@ -11,7 +11,8 @@ import WelcomeEmail from "../email/templates/welcome";
 import prisma from "./prisma";
 import { Platform, RoleEnum } from "@prisma/client";
 import { downloadImage } from "./multer";
-import { getUniqueSuffix, normalizeEmail } from "../util";
+import { getUniqueSuffix, normalizeEmail, removeAccent } from "../util";
+import { updateSearchAccent } from "../util/searchAccent";
 
 const User = prisma.user;
 
@@ -45,6 +46,7 @@ const googleStrategy = new GoogleStrategy(
             },
           },
         });
+        await updateSearchAccent("user", _.id);
         await prisma.cart.create({
           data: {
             userId: _.id,

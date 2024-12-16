@@ -13,10 +13,12 @@ datasource db {
 
 model User {
   id             String     @id @default(uuid())
+
   email          String     @unique
   username       String?
   firstName      String?
   lastName       String?
+  searchAccent   String?
   gender         String?
   roles          UserRole[]
   phone          String?
@@ -119,6 +121,7 @@ model Lesson {
 
   lessonName   String
   lessonNumber Int
+  searchAccent   String?
 
   lessonType LessonType @default(VIDEO)
 
@@ -180,6 +183,7 @@ model Course {
   knowledgeGained String[]
   isPublic        Boolean      @default(false)
   status          CourseStatus @default(DRAFT)
+  searchAccent   String?
 
   avgRating   Float?
   totalRating Int    @default(0)
@@ -274,6 +278,7 @@ model Part {
 model Comment {
   id        String    @id @default(uuid())
   content   String
+  searchAccent   String?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
@@ -494,7 +499,7 @@ model Conversation {
   id String @id @default(uuid())
 
   messages Message[]
-
+  searchAccent   String?
   avatarFileId String?
 
   roomId String @unique
@@ -559,7 +564,7 @@ model Message {
   id String @id @default(uuid())
 
   content String
-
+  searchAccent   String?
   attachments Attachment[]
 
   conversation   Conversation @relation(fields: [conversationId], references: [id])
@@ -628,7 +633,7 @@ model Attachment {
   fileId       String?
   mimetype     String?
   originalName String?
-
+  searchAccent   String?
   userId String?
   user   User?   @relation(fields: [userId], references: [id])
 
@@ -667,7 +672,7 @@ model Campaign {
   startAt     DateTime
   endAt       DateTime
   vouchers    Voucher[]
-
+  searchAccent   String?
   totalFeeVoucher     Int?
   feeVoucherValue     Float?
   totalProductVoucher Int?

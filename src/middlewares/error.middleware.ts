@@ -41,8 +41,6 @@ const errorHandler = (
       .status(res.statusCode === 200 ? 400 : res.statusCode)
       .json({ error: response });
   }
-  console.log("Router: ", req.originalUrl);
-  console.log("Method: ", req.method);
   console.error(error);
 };
 

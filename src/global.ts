@@ -24,6 +24,8 @@ import {
 
 export type KGBSocket = Socket & AddonUserOnSocket;
 
+export const GLOBAL_REVENUE_SHARE = 0.7;
+
 export const userSelector = {
   select: {
     id: true,
@@ -117,10 +119,12 @@ export type AddonUserOnSocket = { user: User };
 
 export type User = {
   id: string;
+
   email: string;
   username?: string;
   firstName?: string;
   lastName?: string;
+  searchAccent?: string;
   gender?: string;
   roles: UserRole[];
   phone?: string;
@@ -195,6 +199,7 @@ export type Lesson = {
 
   lessonName: string;
   lessonNumber: number;
+  searchAccent?: string;
 
   lessonType: LessonType;
 
@@ -236,6 +241,7 @@ export type Course = {
   knowledgeGained: string[];
   isPublic: boolean;
   status: CourseStatus;
+  searchAccent?: string;
 
   avgRating?: number;
   totalRating: number;
@@ -338,7 +344,7 @@ export type Comment = {
 
   lesson?: Lesson;
   lessonId?: string;
-
+  searchAccent?: string;
   user: User;
   userId: string;
 
@@ -523,7 +529,7 @@ export type Conversation = {
   id: string;
 
   messages: Message[];
-
+  searchAccent?: string;
   avatarFileId?: string;
   avatar?: string;
 
@@ -570,7 +576,7 @@ export type Message = {
   id: string;
 
   content: string;
-
+  searchAccent?: string;
   attachments: Attachment[];
 
   conversation: Conversation;
@@ -635,7 +641,7 @@ export type Attachment = {
   file?: File;
   mimetype?: string;
   originalName?: string;
-
+  searchAccent?: string;
   userId?: string;
   user?: User;
 
@@ -664,6 +670,7 @@ export type Campaign = {
 
   type: CampaignType;
   name: string;
+  searchAccent?: string;
   description?: string;
   coverFileId?: string;
   startAt: Date;

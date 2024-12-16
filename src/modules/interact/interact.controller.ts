@@ -5,6 +5,8 @@ import NotFoundException from "../../exceptions/not-found";
 import HttpException from "../../exceptions/http-exception";
 import { KGBRequest } from "../../global";
 import { decodeJWT } from "../auth/auth.service";
+import { removeAccent } from "../../util";
+import { updateSearchAccent } from "../../util/searchAccent";
 
 export default class InteractController extends BaseController {
   public path = "/api/v1/interacts";
@@ -171,7 +173,7 @@ export default class InteractController extends BaseController {
 
   getInteracts = async (req: KGBRequest, res: KGBResponse) => {
     const id = req.gp<string>("id", undefined, String);
-    const limit = req.gp<number>("limit", 10, Number);
+    const limit = req.gp<number>("limit", 12, Number);
     const offset = req.gp<number>("offset", 0, Number);
     const targetResource = req.gp<string>("target_resource", undefined, String);
     if (!targetResource) {
@@ -316,6 +318,7 @@ export default class InteractController extends BaseController {
           level: 0,
         },
       });
+      await updateSearchAccent("comment", comment.id);
     } else if (level === 1 || level === 2) {
       const { parentId } = req.body;
 
@@ -332,6 +335,7 @@ export default class InteractController extends BaseController {
           parent: { connect: { id: parentId } },
         },
       });
+      await updateSearchAccent("comment", comment.id);
     } else {
       throw new HttpException(400, "Invalid level");
     }
@@ -353,7 +357,11 @@ export default class InteractController extends BaseController {
     }
 
     const { content } = req.body;
-    await this.prisma.comment.update({ where: { id }, data: { content } });
+    await this.prisma.comment.update({
+      where: { id },
+      data: { content },
+    });
+    await updateSearchAccent("comment", id);
     const newComment = await this.prisma.comment.findFirst({ where: { id } });
 
     return res.status(200).json(newComment);
