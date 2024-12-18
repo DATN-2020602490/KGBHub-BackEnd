@@ -9,7 +9,7 @@ import {
   RoleEnum,
 } from "@prisma/client";
 import { Course, KGBRequest, KGBResponse, userSelector } from "../../../global";
-import { removeAccent } from "../../../util";
+import { removeAccent } from "../../../util/searchAccent";
 
 export default class PublicCourseController extends BaseController {
   public path = "/api/v1-public/courses";

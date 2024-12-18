@@ -9,12 +9,13 @@ import {
 import { checkRole } from "../auth/auth.service";
 import { CampaignType, RoleEnum, VoucherType } from "@prisma/client";
 import { fileMiddleware } from "../../middlewares/file.middleware";
-import { getUniqueSuffix, removeAccent } from "../../util";
+import { getUniqueSuffix } from "../../util";
 import checkRoleMiddleware from "../../middlewares/checkRole.middleware";
 import NotFoundException from "../../exceptions/not-found";
 import { isString } from "lodash";
 import { KGBAuth } from "../../configs/passport";
-import { updateSearchAccent } from "../../util/searchAccent";
+import { removeAccent, updateSearchAccent } from "../../util/searchAccent";
+import { autoJoinedProductCampaign } from "./campaign.service";
 
 export default class CampaignController extends BaseController {
   public path = "/api/v1/campaigns";
@@ -159,6 +160,7 @@ export default class CampaignController extends BaseController {
         type,
       },
     });
+    res.status(201).json(campaign);
     await updateSearchAccent("campaign", campaign.id);
     if (type === CampaignType.VOUCHERS) {
       const totalFeeVoucher = req.gp<number>("totalFeeVoucher", 0, Number);
@@ -219,6 +221,9 @@ export default class CampaignController extends BaseController {
         },
       });
     } else {
+      const requireJoined =
+        req.gp<string>("requireJoined", "true", String) === "true";
+
       let courseIds = req.gp<{ id: string; discount: number }[] | string>(
         "courseIds",
         "[]",
@@ -253,8 +258,10 @@ export default class CampaignController extends BaseController {
           },
         });
       }
+      if (!requireJoined) {
+        await autoJoinedProductCampaign(campaign.id);
+      }
     }
-    return res.status(201).json(campaign);
   };
 
   updateCampaign = async (req: KGBRequest, res: KGBResponse) => {

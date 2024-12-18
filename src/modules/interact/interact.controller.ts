@@ -5,7 +5,6 @@ import NotFoundException from "../../exceptions/not-found";
 import HttpException from "../../exceptions/http-exception";
 import { KGBRequest } from "../../global";
 import { decodeJWT } from "../auth/auth.service";
-import { removeAccent } from "../../util";
 import { updateSearchAccent } from "../../util/searchAccent";
 
 export default class InteractController extends BaseController {

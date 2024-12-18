@@ -79,7 +79,7 @@ export const processOrdersReportAuthor = (
  * @throws {Error} If b is zero.
  * @returns The value of x.
  */
-function findX(a: number, b: number, y: number) {
+export function findX(a: number, b: number, y: number) {
   if (b === 0) {
     throw new Error("Division by zero: b cannot be zero.");
   }

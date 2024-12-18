@@ -11,8 +11,9 @@ import WelcomeEmail from "../email/templates/welcome";
 import prisma from "./prisma";
 import { Platform, RoleEnum } from "@prisma/client";
 import { downloadImage } from "./multer";
-import { getUniqueSuffix, normalizeEmail, removeAccent } from "../util";
+import { getUniqueSuffix, normalizeEmail } from "../util";
 import { updateSearchAccent } from "../util/searchAccent";
+import { handleCloudSaveConversation } from "../modules/chat/chat.service";
 
 const User = prisma.user;
 
@@ -46,6 +47,7 @@ const googleStrategy = new GoogleStrategy(
             },
           },
         });
+        await handleCloudSaveConversation(_.id);
         await updateSearchAccent("user", _.id);
         await prisma.cart.create({
           data: {
@@ -82,6 +84,25 @@ const googleStrategy = new GoogleStrategy(
           },
         },
       });
+      if (user.syncWithGoogle) {
+        await User.update({
+          where: { id: user.id },
+          data: {
+            firstName: profile._json.given_name,
+            lastName: profile._json.family_name,
+          },
+        });
+        const avatar = profile._json.picture;
+        if (avatar) {
+          const _avatar = await downloadImage(avatar, user.id);
+          if (_avatar) {
+            await prisma.user.update({
+              where: { id: user.id },
+              data: { avatarFileId: _avatar.id },
+            });
+          }
+        }
+      }
       if (!user.avatarFileId) {
         const avatar = profile._json.picture;
         if (avatar) {

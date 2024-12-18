@@ -1,7 +1,7 @@
 import { BaseController } from "../../abstractions/base.controller";
 import express from "express";
 import stripe from "../../configs/stripe";
-import { KGBRequest, KGBResponse } from "../../global";
+import { KGBRequest, KGBResponse, userSelector } from "../../global";
 import {
   createLineItems,
   notPaidCourses,
@@ -28,6 +28,8 @@ export default class StripeController extends BaseController {
       KGBAuth("jwt"),
       this.checkoutFromCart,
     );
+    this.router.get("/orders", this.getOrders);
+    this.router.get("/orders/:id", this.getOrder);
   }
 
   handleWebhook = async (req: KGBRequest, res: KGBResponse) => {
@@ -204,6 +206,40 @@ export default class StripeController extends BaseController {
         });
       }
     }
+    return res.status(200).json(order);
+  };
+
+  getOrders = async (req: KGBRequest, res: KGBResponse) => {
+    const limit = req.gp<number>("limit", 12, Number);
+    const offset = req.gp<number>("offset", 0, Number);
+    const userId = req.gp<string>("userId", null, String);
+    const where = {};
+    if (userId) {
+      where["userId"] = userId;
+    }
+    const orders = await this.prisma.order.findMany({
+      where,
+      include: { user: userSelector },
+      take: limit,
+      skip: offset,
+      orderBy: { updatedAt: "desc" },
+    });
+    for (const order of orders) {
+      order.amount = order.amount + order.platformFee + order.KGBHubServiceTip;
+    }
+    return res.status(200).json(orders);
+  };
+
+  getOrder = async (req: KGBRequest, res: KGBResponse) => {
+    const id = req.gp<string>("id", undefined, String);
+    const order = await this.prisma.order.findFirst({
+      where: { id },
+      include: {
+        user: userSelector,
+        productOrders: { include: { product: { include: { course: true } } } },
+      },
+    });
+    order.amount = order.amount + order.platformFee + order.KGBHubServiceTip;
     return res.status(200).json(order);
   };
 }

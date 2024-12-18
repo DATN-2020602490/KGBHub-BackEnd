@@ -28,7 +28,7 @@ import {
 } from "./course.service";
 import { convert } from "html-to-text";
 import { isString } from "lodash";
-import { generateRandomString, removeAccent } from "../../util";
+import { generateRandomString } from "../../util";
 import { updateSearchAccent } from "../../util/searchAccent";
 
 export default class CourseController extends BaseController {
@@ -271,7 +271,11 @@ export default class CourseController extends BaseController {
   deleteCourse = async (req: KGBRequest, res: KGBResponse) => {
     const reqUser = req.user;
     const id = req.gp<string>("id", undefined, String);
-    const course = await getCourse(id, reqUser.id);
+    const course = await getCourse(
+      id,
+      reqUser.id,
+      reqUser.roles.some((role) => role.role.name === RoleEnum.ADMIN),
+    );
     if (!course) {
       throw new NotFoundException("course", id);
     }

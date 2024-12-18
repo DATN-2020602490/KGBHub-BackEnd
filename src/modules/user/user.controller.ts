@@ -11,8 +11,7 @@ import {
 } from "@prisma/client";
 import { File, KGBRequest } from "../../global";
 import { fileMiddleware } from "../../middlewares/file.middleware";
-import { normalizeEmail, removeAccent } from "../../util";
-import { updateSearchAccent } from "../../util/searchAccent";
+import { removeAccent, updateSearchAccent } from "../../util/searchAccent";
 
 export default class UserController extends BaseController {
   public path = "/api/v1/users";
@@ -50,6 +49,7 @@ export default class UserController extends BaseController {
     this.router.get(`/actions/forms`, KGBAuth("jwt"), this.getMyForms);
     this.router.patch(`/actions/forms`, KGBAuth("jwt"), this.updateMyForm);
     this.router.get(`/actions/author-search/:search`, this.searchAuthor);
+    this.router.get(`/actions/user-search/:search`, this.searchUser);
   }
 
   getUsers = async (req: KGBRequest, res: KGBResponse) => {
@@ -407,6 +407,23 @@ export default class UserController extends BaseController {
     const where = {
       roles: { some: { role: { name: RoleEnum.AUTHOR } } },
     };
+    if (search) {
+      where["searchAccent"] = { contains: removeAccent(search) };
+    }
+    const users = await this.prisma.user.findMany({
+      where,
+      select: userSelector.select,
+      take: limit,
+      skip: offset,
+    });
+    return res.status(200).json(users);
+  };
+
+  searchUser = async (req: KGBRequest, res: KGBResponse) => {
+    const search = req.gp<string>("search", null, String);
+    const limit = req.gp<number>("limit", 12, Number);
+    const offset = req.gp<number>("offset", 0, Number);
+    const where = {};
     if (search) {
       where["searchAccent"] = { contains: removeAccent(search) };
     }

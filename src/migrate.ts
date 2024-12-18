@@ -3,6 +3,7 @@ import {
   ChatMemberRole,
   ConversationType,
   Currency,
+  LessonType,
   OrderStatus,
   RoleEnum,
   VoucherType,
@@ -10,11 +11,14 @@ import {
 import prisma from "./configs/prisma";
 import stripe from "./configs/stripe";
 import { convert } from "html-to-text";
-import { getPlatformFee } from "./modules/stripe/stripe.service";
+import {
+  bindingPriceForProductOrder,
+  getPlatformFee,
+} from "./modules/stripe/stripe.service";
 import BigNumber from "bignumber.js";
 import { refreshCourse } from "./modules/course/course.service";
-import { removeAccent } from "./util";
 import { updateSearchAccent } from "./util/searchAccent";
+import { handleCloudSaveConversation } from "./modules/chat/chat.service";
 
 type MigrateFunction = () => void;
 
@@ -318,6 +322,13 @@ migrate.add("remove_trash_data", async () => {
   });
 });
 
+migrate.add("add_cloud_saves", async () => {
+  const users = await prisma.user.findMany({});
+  for (const user of users) {
+    await handleCloudSaveConversation(user.id);
+  }
+});
+
 migrate.add("add_search_accent", async () => {
   const users = await prisma.user.findMany({});
   for (const user of users) {
@@ -350,6 +361,28 @@ migrate.add("add_search_accent", async () => {
   const attachments = await prisma.attachment.findMany({});
   for (const attachment of attachments) {
     await updateSearchAccent("attachment", attachment.id);
+  }
+});
+
+migrate.add("lesson_duration", async () => {
+  const lessons = await prisma.lesson.findMany({
+    where: { lessonType: LessonType.VIDEO },
+  });
+  for (const lesson of lessons) {
+    const file = await prisma.file.findFirst({
+      where: { id: lesson.videoFileId },
+    });
+    await prisma.lesson.update({
+      where: { id: lesson.id },
+      data: { duration: file.duration || 0 },
+    });
+  }
+});
+
+migrate.add("add_product_order_price", async () => {
+  const orders = await prisma.order.findMany({});
+  for (const order of orders) {
+    bindingPriceForProductOrder(order.id);
   }
 });
 

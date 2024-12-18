@@ -9,12 +9,13 @@ import { OrderStatus, RoleEnum } from "@prisma/client";
 import checkRoleMiddleware from "../../middlewares/checkRole.middleware";
 import { KGBRequest } from "../../global";
 import { fileMiddleware } from "../../middlewares/file.middleware";
+import { decodeJWT } from "../auth/auth.service";
 
 export default class FileController extends BaseController {
   public path = "/api/v1/files";
 
   public initializeRoutes() {
-    this.router.get(`/:id`, KGBAuth(["jwt", "anonymous"]), this.getFile);
+    this.router.get(`/:id`, this.getFile);
     this.router.post(
       `/`,
       KGBAuth("jwt"),
@@ -46,10 +47,11 @@ export default class FileController extends BaseController {
       });
     }
 
-    const filename = file.filename;
+    let filename = file.filename;
     const isExist = existsSync(`uploads/${filename}`);
     if (!isExist) {
-      throw new NotFoundException("file", filename);
+      // throw new NotFoundException("file", filename);
+      filename = "0.jpg";
     }
     const fileType = ["jpeg", "jpg", "png", "gif", "svg"].includes(
       filename.split(".")[1],
@@ -73,37 +75,66 @@ export default class FileController extends BaseController {
       res.writeHead(200, head);
       createReadStream(_path).pipe(res);
     } else if (fileType === "video") {
-      if (!req.user) {
-        throw new HttpException(403, "Forbidden");
-      }
-      const reqUser = req.user;
-      const user = await this.prisma.user.findFirst({
-        where: { id: reqUser.id },
-        include: { coursesPaid: { include: { order: true } } },
-      });
       const lesson = await this.prisma.lesson.findFirst({
         where: { videoFileId: fileId },
         include: {
           part: true,
         },
       });
-      if (!lesson) {
-        throw new NotFoundException("file", filename);
-      }
-      if (
-        !(
-          reqUser.id === lesson.userId ||
-          reqUser.roles.find((_) => _.role.name === RoleEnum.ADMIN) ||
-          user?.coursesPaid.find(
-            (_) =>
-              _.courseId === lesson.part.courseId &&
-              _.order.status === OrderStatus.SUCCESS,
-          ) ||
-          lesson.trialAllowed
-        )
-      ) {
+      const attachment = await this.prisma.attachment.findFirst({
+        where: { fileId },
+        include: {
+          message: true,
+        },
+      });
+
+      if (!lesson && !attachment) {
         throw new HttpException(403, "Forbidden");
       }
+
+      if (lesson && !lesson.trialAllowed) {
+        const token = req.gp<string>("token", undefined, String);
+        const reqUser = await decodeJWT(token as string);
+        const user = await this.prisma.user.findFirst({
+          where: { id: reqUser.id },
+          include: {
+            coursesPaid: {
+              where: {
+                courseId: lesson.part.courseId,
+                order: { status: OrderStatus.SUCCESS },
+              },
+            },
+          },
+        });
+
+        const hasAccess =
+          reqUser.roles.some((role) => role.role.name === RoleEnum.ADMIN) ||
+          reqUser.id === lesson.userId ||
+          (user?.coursesPaid.length ?? 0) > 0;
+
+        if (!hasAccess) {
+          throw new HttpException(403, "Forbidden");
+        }
+      }
+
+      // if (
+      //   attachment &&
+      //   (!attachment.message ||
+      //     !(await this.prisma.chatMember.findFirst({
+      //       where: {
+      //         conversationId: attachment.conversationId,
+      //         userId: reqUser.id,
+      //       },
+      //     })))
+      // ) {
+      //   if (
+      //     !reqUser.roles.some((role) => role.role.name === RoleEnum.ADMIN) ||
+      //     reqUser.id !== attachment.userId
+      //   ) {
+      //     throw new HttpException(403, "Forbidden");
+      //   }
+      // }
+
       const videoPath = path.resolve(file.localPath as string);
       const stat = statSync(videoPath);
       const fileSize = stat.size;

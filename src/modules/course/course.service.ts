@@ -2,7 +2,7 @@ import { ConversationType, CourseStatus, LessonType } from "@prisma/client";
 import prisma from "../../configs/prisma";
 import { userSelector } from "../../global";
 import getVideoDurationInSeconds from "get-video-duration";
-import { removeAccent } from "../../util";
+import { removeAccent } from "../../util/searchAccent";
 
 export const refreshCourse = async (id: string) => {
   if (!id) return;
@@ -58,6 +58,12 @@ export const refreshCourse = async (id: string) => {
       } catch {
         video.duration = 0;
       }
+      await prisma.lesson.updateMany({
+        where: { videoFileId: video.id },
+        data: {
+          duration: video.duration,
+        },
+      });
       await prisma.file.update({
         where: { id: video.id },
         data: { duration: video.duration },
@@ -186,7 +192,7 @@ export const refreshPart = async (courseId: string) => {
 };
 
 export const deleteCourse = async (id: string) => {
-  try {
+  await prisma.$transaction(async (prisma) => {
     await prisma.chatMembersOnMessages.deleteMany({
       where: {
         message: {
@@ -197,6 +203,7 @@ export const deleteCourse = async (id: string) => {
         },
       },
     });
+
     await prisma.message.deleteMany({
       where: {
         conversation: {
@@ -205,6 +212,7 @@ export const deleteCourse = async (id: string) => {
         },
       },
     });
+
     await prisma.chatMember.deleteMany({
       where: {
         conversation: {
@@ -213,17 +221,21 @@ export const deleteCourse = async (id: string) => {
         },
       },
     });
+
     await prisma.conversation.deleteMany({
       where: {
         course: { id },
         conversationType: ConversationType.COURSE_GROUP_CHAT,
       },
     });
+
     await prisma.heart.deleteMany({ where: { courseId: id } });
+
     const parts = await prisma.part.findMany({
       where: { courseId: id },
       include: { lessons: true },
     });
+
     for (const part of parts) {
       for (const lesson of part.lessons) {
         await prisma.comment.deleteMany({
@@ -244,6 +256,7 @@ export const deleteCourse = async (id: string) => {
       });
       await prisma.part.delete({ where: { id: part.id } });
     }
+
     await prisma.rating.deleteMany({ where: { courseId: id } });
     await prisma.bookmark.deleteMany({ where: { courseId: id } });
     await prisma.coursesPaid.deleteMany({
@@ -252,10 +265,9 @@ export const deleteCourse = async (id: string) => {
     await prisma.courseDone.deleteMany({
       where: { courseId: id },
     });
+
     await prisma.course.delete({ where: { id } });
-  } catch (error) {
-    console.log(error);
-  }
+  });
 };
 
 export const deletePart = async (id: string) => {

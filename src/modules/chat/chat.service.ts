@@ -2,207 +2,189 @@ import { ConversationType, ChatMemberRole, MemberStatus } from "@prisma/client";
 import HttpException from "../../exceptions/http-exception";
 import prisma from "../../configs/prisma";
 import IO from "../../socket/io";
-import { User } from "../../global";
-import { getUniqueSuffix, removeAccent } from "../../util";
+import { KGBRemoteSocket, User } from "../../global";
+import { getUniqueSuffix } from "../../util";
 import { updateSearchAccent } from "../../util/searchAccent";
 
 export const createChat = async (body: any, reqUser: User, io: IO) => {
-  const conversationType = body.conversationType as ConversationType;
-  if (
-    !conversationType ||
-    conversationType === ConversationType.DM ||
-    conversationType === ConversationType.CLOUD_SAVE ||
-    conversationType === ConversationType.GROUP_CHAT
-  ) {
-    const { userIds } = body;
-    if (!userIds) {
-      throw new HttpException(400, "userIds is required");
-    }
-    if (!Array.isArray(userIds)) {
-      throw new HttpException(400, "userIds must be an array");
-    }
-    if (!userIds.includes(reqUser.id)) {
-      throw new HttpException(403, "Missing user id in userIds array");
-    }
-    if (userIds.length === 2) {
-      if (userIds[0] === userIds[1]) {
-        const userId = userIds[0];
-        const existConversation = await prisma.conversation.findFirst({
-          where: {
-            conversationType: ConversationType.CLOUD_SAVE,
-            chatMembers: { some: { userId: userId } },
+  const { userIds } = body;
+
+  validateRequest(userIds, reqUser.id);
+
+  if (userIds.length === 2 && userIds[0] === userIds[1]) {
+    return await handleCloudSaveConversation(userIds[0], io);
+  }
+
+  if (userIds.length === 2) {
+    return await handleDirectMessageConversation(userIds, reqUser, io);
+  }
+
+  if (userIds.length > 2) {
+    return await handleGroupChatConversation(userIds, reqUser, io);
+  }
+
+  throw new HttpException(400, "Invalid conversation type or userIds");
+};
+
+const validateRequest = (userIds: any, reqUserId: string) => {
+  if (!userIds || !Array.isArray(userIds)) {
+    throw new HttpException(400, "userIds must be an array");
+  }
+  if (!userIds.includes(reqUserId)) {
+    throw new HttpException(403, "Missing user id in userIds array");
+  }
+};
+
+export const handleCloudSaveConversation = async (userId: string, io?: IO) => {
+  let conversation = await prisma.conversation.findFirst({
+    where: {
+      conversationType: ConversationType.CLOUD_SAVE,
+      chatMembers: { some: { userId } },
+    },
+  });
+
+  if (!conversation) {
+    conversation = await prisma.conversation.create({
+      data: {
+        conversationName: "Cloud Save",
+        conversationType: ConversationType.CLOUD_SAVE,
+        roomId: `cloud_save_${userId}`,
+        chatMembers: {
+          create: {
+            userId,
+            chatMemberRole: ChatMemberRole.ADMIN,
+            status: MemberStatus.ACTIVE,
           },
-        });
-        if (existConversation) {
-          return existConversation;
-        }
-        const conversation = await prisma.conversation.create({
-          data: {
-            conversationName: "Cloud Save",
-            conversationType: ConversationType.CLOUD_SAVE,
-            roomId: `cloud_save_${userId}`,
-            chatMembers: {
-              create: {
-                userId: userId,
+        },
+      },
+    });
+  }
+  await updateSearchAccent("conversation", conversation.id);
+  if (io) {
+    await notifyUsersInConversation(io, conversation.id);
+  }
+  return conversation;
+};
+
+const handleDirectMessageConversation = async (
+  userIds: string[],
+  reqUser: User,
+  io: IO,
+) => {
+  const otherUserId = userIds.find((id) => id !== reqUser.id);
+
+  const roomId = generateDMRoomId(reqUser.id, otherUserId);
+  let conversation = await prisma.conversation.findFirst({
+    where: { conversationType: ConversationType.DM, roomId },
+  });
+
+  if (!conversation) {
+    conversation = await prisma.conversation.create({
+      data: {
+        conversationType: ConversationType.DM,
+        roomId,
+        chatMembers: {
+          createMany: {
+            data: [
+              {
+                userId: reqUser.id,
                 chatMemberRole: ChatMemberRole.ADMIN,
                 status: MemberStatus.ACTIVE,
               },
-            },
-          },
-        });
-        const sockets: any[] = await io.io
-          .of(io.chatNamespaceRouter)
-          .fetchSockets();
-        for (const s of sockets) {
-          if (!s.user) {
-            continue;
-          }
-          const isInRoom = await prisma.chatMember.findFirst({
-            where: {
-              userId: s.user.id,
-              conversationId: conversation.id,
-              status: MemberStatus.ACTIVE,
-            },
-          });
-          if (isInRoom) {
-            const chatList = await io.chatList(s.user.id);
-            s.emit("getChats", chatList);
-          }
-        }
-        return conversation;
-      }
-      const userId = userIds.find((_) => _ !== reqUser.id);
-      const existConversation = await prisma.conversation.findFirst({
-        where: {
-          conversationType: ConversationType.DM,
-          chatMembers: {},
-          roomId:
-            reqUser.id < userId
-              ? `dm_${reqUser.id}_${userId}`
-              : `dm_${userId}_${reqUser.id}`,
-        },
-      });
-      if (existConversation) {
-        return existConversation;
-      }
-      const conversation = await prisma.conversation.create({
-        data: {
-          conversationType: ConversationType.DM,
-          roomId:
-            reqUser.id < userId
-              ? `dm_${reqUser.id}_${userId}`
-              : `dm_${userId}_${reqUser.id}`,
-          chatMembers: {
-            createMany: {
-              data: [
-                {
-                  userId: reqUser.id,
-                  chatMemberRole: ChatMemberRole.ADMIN,
-                  status: MemberStatus.ACTIVE,
-                },
-                {
-                  userId: userId,
-                  chatMemberRole: ChatMemberRole.ADMIN,
-                  status: MemberStatus.ACTIVE,
-                },
-              ],
-            },
+              {
+                userId: otherUserId,
+                chatMemberRole: ChatMemberRole.ADMIN,
+                status: MemberStatus.ACTIVE,
+              },
+            ],
           },
         },
-      });
-      await updateSearchAccent("conversation", conversation.id);
-      const sockets: any[] = await io.io
-        .of(io.chatNamespaceRouter)
-        .fetchSockets();
-      for (const s of sockets) {
-        if (!s.user) {
-          continue;
-        }
-        const isInRoom = await prisma.chatMember.findFirst({
-          where: {
-            userId: s.user.id,
-            conversationId: conversation.id,
-            status: MemberStatus.ACTIVE,
-          },
-        });
-        if (isInRoom) {
-          const chatList = await io.chatList(s.user.id);
-          s.emit("getChats", chatList);
-        }
-      }
-      return conversation;
-    } else if (userIds.length > 2) {
-      const existConversations = await prisma.conversation.findMany({
-        where: {
-          conversationType: ConversationType.GROUP_CHAT,
-          chatMembers: { some: { userId: reqUser.id } },
-        },
-      });
-      for (const conversation of existConversations) {
-        const members = await prisma.chatMember.findMany({
-          where: {
-            conversationId: conversation.id,
-            status: MemberStatus.ACTIVE,
-          },
-        });
-        if (members.length === userIds.length) {
-          const existUserIds = members.map((_) => _.userId);
-          if (userIds.every((_) => existUserIds.includes(_))) {
-            return conversation;
-          }
-        }
-      }
-      const uniqueSuffix = await getUniqueSuffix(
-        "roomId",
-        prisma.conversation,
-        "group_chat_",
-      );
+      },
+    });
+    await updateSearchAccent("conversation", conversation.id);
+  }
 
-      const conversation = await prisma.conversation.create({
-        data: {
-          conversationType: ConversationType.GROUP_CHAT,
-          roomId: uniqueSuffix,
-          chatMembers: {
-            createMany: {
-              data: userIds.map((userId) => {
-                if (userId === reqUser.id) {
-                  return {
-                    userId: userId,
-                    chatMemberRole: ChatMemberRole.ADMIN,
-                    status: MemberStatus.ACTIVE,
-                  };
-                }
-                return {
-                  userId: userId,
-                  chatMemberRole: ChatMemberRole.MEMBER,
-                  status: MemberStatus.ACTIVE,
-                };
-              }),
-            },
-          },
-        },
-      });
-      await updateSearchAccent("conversation", conversation.id);
-      const sockets: any[] = await io.io
-        .of(io.chatNamespaceRouter)
-        .fetchSockets();
-      for (const s of sockets) {
-        if (!s.user) {
-          continue;
-        }
-        const isInRoom = await prisma.chatMember.findFirst({
-          where: {
-            userId: s.user.id,
-            conversationId: conversation.id,
+  await notifyUsersInConversation(io, conversation.id);
+  return conversation;
+};
+
+const handleGroupChatConversation = async (
+  userIds: string[],
+  reqUser: User,
+  io: IO,
+) => {
+  const existingConversation = await findExistingGroupConversation(
+    userIds,
+    reqUser.id,
+  );
+  if (existingConversation) return existingConversation;
+
+  const uniqueSuffix = await getUniqueSuffix(
+    "roomId",
+    prisma.conversation,
+    "group_chat_",
+  );
+  const conversation = await prisma.conversation.create({
+    data: {
+      conversationType: ConversationType.GROUP_CHAT,
+      roomId: uniqueSuffix,
+      chatMembers: {
+        createMany: {
+          data: userIds.map((userId) => ({
+            userId,
+            chatMemberRole:
+              userId === reqUser.id
+                ? ChatMemberRole.ADMIN
+                : ChatMemberRole.MEMBER,
             status: MemberStatus.ACTIVE,
-          },
-        });
-        if (isInRoom) {
-          const chatList = await io.chatList(s.user.id);
-          s.emit("getChats", chatList);
-        }
-      }
-      return conversation;
+          })),
+        },
+      },
+    },
+  });
+
+  await updateSearchAccent("conversation", conversation.id);
+  await notifyUsersInConversation(io, conversation.id);
+  return conversation;
+};
+
+const findExistingGroupConversation = async (
+  userIds: string[],
+  reqUserId: string,
+) => {
+  const conversations = await prisma.conversation.findMany({
+    where: {
+      conversationType: ConversationType.GROUP_CHAT,
+      chatMembers: { some: { userId: reqUserId } },
+    },
+    include: { chatMembers: true },
+  });
+
+  return conversations.find((conv) => {
+    const memberIds = conv.chatMembers.map((m) => m.userId);
+    return (
+      userIds.length === memberIds.length &&
+      userIds.every((id) => memberIds.includes(id))
+    );
+  });
+};
+
+const generateDMRoomId = (id1: string, id2: string) => {
+  return id1 < id2 ? `dm_${id1}_${id2}` : `dm_${id2}_${id1}`;
+};
+
+const notifyUsersInConversation = async (io: IO, conversationId: string) => {
+  const sockets = (await io.io
+    .of(io.chatNamespaceRouter)
+    .fetchSockets()) as KGBRemoteSocket[];
+  for (const s of sockets) {
+    if (!s.user) continue;
+    const isInRoom = await prisma.chatMember.findFirst({
+      where: { userId: s.user.id, conversationId, status: MemberStatus.ACTIVE },
+    });
+    if (isInRoom) {
+      const chatList = await io.chatList(s.user.id);
+      s.emit("getChats", chatList);
     }
   }
 };

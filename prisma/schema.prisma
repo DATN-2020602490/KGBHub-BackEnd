@@ -12,7 +12,7 @@ datasource db {
 }
 
 model User {
-  id             String     @id @default(uuid())
+  id String @id @default(uuid())
 
   email          String     @unique
   username       String?
@@ -121,7 +121,8 @@ model Lesson {
 
   lessonName   String
   lessonNumber Int
-  searchAccent   String?
+  searchAccent String?
+  duration     Float?
 
   lessonType LessonType @default(VIDEO)
 
@@ -183,7 +184,7 @@ model Course {
   knowledgeGained String[]
   isPublic        Boolean      @default(false)
   status          CourseStatus @default(DRAFT)
-  searchAccent   String?
+  searchAccent    String?
 
   avgRating   Float?
   totalRating Int    @default(0)
@@ -276,12 +277,12 @@ model Part {
 }
 
 model Comment {
-  id        String    @id @default(uuid())
-  content   String
-  searchAccent   String?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
+  id           String    @id @default(uuid())
+  content      String
+  searchAccent String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
 
   lesson   Lesson? @relation(fields: [lessonId], references: [id])
   lessonId String?
@@ -415,6 +416,7 @@ model ProductOrder {
   id        String  @id @default(uuid())
   productId String
   product   Product @relation(fields: [productId], references: [id])
+  price     Float   @default(0)
   quantity  Int     @default(1)
   orderId   String
   order     Order   @relation(fields: [orderId], references: [id])
@@ -498,8 +500,8 @@ model Order {
 model Conversation {
   id String @id @default(uuid())
 
-  messages Message[]
-  searchAccent   String?
+  messages     Message[]
+  searchAccent String?
   avatarFileId String?
 
   roomId String @unique
@@ -563,9 +565,9 @@ enum ConversationType {
 model Message {
   id String @id @default(uuid())
 
-  content String
-  searchAccent   String?
-  attachments Attachment[]
+  content      String
+  searchAccent String?
+  attachments  Attachment[]
 
   conversation   Conversation @relation(fields: [conversationId], references: [id])
   conversationId String
@@ -633,9 +635,9 @@ model Attachment {
   fileId       String?
   mimetype     String?
   originalName String?
-  searchAccent   String?
-  userId String?
-  user   User?   @relation(fields: [userId], references: [id])
+  searchAccent String?
+  userId       String?
+  user         User?   @relation(fields: [userId], references: [id])
 
   conversationId String?
   conversation   Conversation? @relation(fields: [conversationId], references: [id])
@@ -665,14 +667,14 @@ enum CampaignType {
 model Campaign {
   id String @id @default(uuid())
 
-  type        CampaignType
-  name        String
-  description String?
-  coverFileId String?
-  startAt     DateTime
-  endAt       DateTime
-  vouchers    Voucher[]
-  searchAccent   String?
+  type                CampaignType
+  name                String
+  description         String?
+  coverFileId         String?
+  startAt             DateTime
+  endAt               DateTime
+  vouchers            Voucher[]
+  searchAccent        String?
   totalFeeVoucher     Int?
   feeVoucherValue     Float?
   totalProductVoucher Int?

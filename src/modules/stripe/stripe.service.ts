@@ -14,6 +14,7 @@ import BigNumber from "bignumber.js";
 import { toLower } from "lodash";
 import { userSelector, Voucher } from "../../global";
 import IO from "../../socket/io";
+import { findX } from "../report/report.service";
 
 export const onStripeHook = async (event: any, io: IO) => {
   const STATUS_MAP = {
@@ -310,7 +311,7 @@ export const createLineItems = async (
   tipPercent: number,
   code?: string,
 ) => {
-  const line_items = [];
+  const line_items = [] as { price: string; quantity: number }[];
   let voucher: Voucher = null;
   if (code) {
     voucher = await prisma.voucher.findFirst({ where: { code } });
@@ -441,4 +442,54 @@ export const notPaidCourses = async (userId: string, courseIds: string[]) => {
     notPaidCourses.push(courseId);
   }
   return notPaidCourses;
+};
+
+export const bindingPriceForProductOrder = async (id: string) => {
+  const order = await prisma.order.findUnique({
+    where: { id },
+    include: {
+      coursesPaids: { include: { course: { include: { products: true } } } },
+    },
+  });
+  if (!order) {
+    return;
+  }
+  const tipProduct = await prisma.product.findFirst({
+    where: { type: ProductType.KGBHUB_SERVICE_TIP },
+  });
+  await prisma.productOrder.create({
+    data: {
+      productId: tipProduct.id,
+      orderId: id,
+      quantity: 1,
+      price: order.KGBHubServiceTip,
+    },
+  });
+  const stripeFeeProduct = await prisma.product.findFirst({
+    where: { type: ProductType.STRIPE_SERVICE_FEE },
+  });
+  await prisma.productOrder.create({
+    data: {
+      productId: stripeFeeProduct.id,
+      price: order.platformFee,
+      quantity: 1,
+      orderId: id,
+    },
+  });
+
+  for (const coursePaid of order.coursesPaids) {
+    const salePrice = findX(
+      coursePaid.course.priceAmount,
+      order.originalAmount,
+      order.amount,
+    );
+    await prisma.productOrder.create({
+      data: {
+        productId: coursePaid.course.products[0].id,
+        quantity: 1,
+        orderId: id,
+        price: BigNumber(BigNumber(salePrice).toFixed(2)).toNumber(),
+      },
+    });
+  }
 };

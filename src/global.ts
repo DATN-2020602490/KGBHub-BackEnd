@@ -200,6 +200,7 @@ export type Lesson = {
   lessonName: string;
   lessonNumber: number;
   searchAccent?: string;
+  duration?: number;
 
   lessonType: LessonType;
 
@@ -456,6 +457,7 @@ export type ProductOrder = {
   id: string;
   productId: string;
   product: Product;
+  price: number;
   quantity: number;
   orderId: string;
   order: Order;

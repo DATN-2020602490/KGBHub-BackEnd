@@ -11,8 +11,9 @@ import HttpException from "../../exceptions/http-exception";
 import { KGBRequest, User } from "../../global";
 import { Platform, RoleEnum } from "@prisma/client";
 import { downloadImage } from "../../configs/multer";
-import { getUniqueSuffix, normalizeEmail, removeAccent } from "../../util";
+import { getUniqueSuffix, normalizeEmail } from "../../util";
 import { updateSearchAccent } from "../../util/searchAccent";
+import { handleCloudSaveConversation } from "../chat/chat.service";
 
 export default class AuthController extends BaseController {
   public path = "/api/v1/auth";
@@ -93,6 +94,7 @@ export default class AuthController extends BaseController {
           platform: Platform.GOOGLE,
         },
       });
+      await handleCloudSaveConversation(_.id);
       await updateSearchAccent("user", _.id);
       await this.prisma.cart.create({
         data: {
@@ -121,6 +123,25 @@ export default class AuthController extends BaseController {
       where: { email },
       include: { roles: { include: { role: true } } },
     });
+    if (user.syncWithGoogle) {
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: {
+          firstName: given_name,
+          lastName: family_name,
+        },
+      });
+      const avatar = picture;
+      if (avatar) {
+        const _avatar = await downloadImage(avatar, user.id);
+        if (_avatar) {
+          await this.prisma.user.update({
+            where: { id: user.id },
+            data: { avatarFileId: _avatar.id },
+          });
+        }
+      }
+    }
     if (!user.avatarFileId) {
       const avatar = picture;
       if (avatar) {

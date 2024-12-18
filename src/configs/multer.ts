@@ -5,21 +5,27 @@ import axios from "axios";
 import prisma from "./prisma";
 import { lookup } from "mime-types";
 
-const videoStorage = multer.diskStorage({
+const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     mkdirSync("uploads/", { recursive: true });
     cb(null, "uploads/");
   },
   filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    const extension = file.filename.split(".").pop();
-    cb(null, `file-${uniqueSuffix}.${extension}`);
+    try {
+      const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+      const extension = file.originalname.split(".").pop();
+      cb(null, `file-${uniqueSuffix}.${extension}`);
+    } catch (e) {
+      console.log(e);
+      const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+      cb(null, `file-${uniqueSuffix}`);
+    }
   },
 });
 
 const KGBUploader = multer({
-  storage: videoStorage,
-  limits: { fileSize: 1024 * 1024 * 1024 * 3 },
+  storage: storage,
+  limits: { fileSize: 1024 * 1024 * 1024 },
   fileFilter: (req, file, cb: any) => {
     cb(null, true);
   },

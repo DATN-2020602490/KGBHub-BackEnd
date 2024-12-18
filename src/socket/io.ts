@@ -13,7 +13,6 @@ import {
 } from "../global";
 import { CourseStatus, MemberStatus, UserView } from "@prisma/client";
 import prisma from "../configs/prisma";
-import { removeAccent } from "../util";
 import { updateSearchAccent } from "../util/searchAccent";
 
 class IO {
@@ -559,7 +558,10 @@ class IO {
             for (const _ of attachments) {
               await this.prisma.attachment.update({
                 where: { id: _ },
-                data: { message: { connect: { id: message.id } } },
+                data: {
+                  message: { connect: { id: message.id } },
+                  conversation: { connect: { id: id } },
+                },
               });
             }
           }
@@ -635,10 +637,9 @@ class IO {
             if (!socket.user) {
               continue;
             }
+            await this.sendChatList(socket.user.id, conversation.id, socket);
             if (socket.rooms.has(conversation.roomId)) {
               await this.makeRead(socket.user.id, conversation.roomId, socket);
-            } else {
-              await this.sendChatList(socket.user.id, conversation.id, socket);
             }
           }
         } catch (e: any) {

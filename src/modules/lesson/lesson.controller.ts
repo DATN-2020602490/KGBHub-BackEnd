@@ -4,12 +4,16 @@ import NotFoundException from "../../exceptions/not-found";
 import { KGBAuth } from "../../configs/passport";
 import HttpException from "../../exceptions/http-exception";
 import checkRoleMiddleware from "../../middlewares/checkRole.middleware";
-import { RoleEnum, LessonType, LessonStatus } from "@prisma/client";
+import {
+  RoleEnum,
+  LessonType,
+  LessonStatus,
+  CourseStatus,
+} from "@prisma/client";
 import { KGBRequest, File } from "../../global";
 import { fileMiddleware } from "../../middlewares/file.middleware";
 import { deleteLesson, getLesson, getLessons } from "./lesson.service";
 import { refreshCourse } from "../course/course.service";
-import { removeAccent } from "../../util";
 import { updateSearchAccent } from "../../util/searchAccent";
 
 export default class LessonController extends BaseController {
@@ -76,28 +80,41 @@ export default class LessonController extends BaseController {
       } else {
         thumbnail = { id: null } as File;
       }
+      const lessonCount = await this.prisma.lesson.count({
+        where: {
+          user: { id: req.user.id },
+          part: { courseId: req.body.courseId },
+        },
+      });
       const { lessonName, descriptionMD } = req.body;
-      const lessonNumber = parseInt(req.body.lessonNumber || "0");
+      const lessonNumber = req.gp<number>(
+        "lessonNumber",
+        lessonCount + 1,
+        Number,
+      );
       const partId = req.gp<string>("partId", undefined, String);
       const courseId = req.gp<string>("courseId", undefined, String);
       const trialAllowed = req.body.trialAllowed === "true";
-      if (
-        !lessonName ||
-        !lessonNumber ||
-        !descriptionMD ||
-        !partId ||
-        !courseId
-      ) {
+      if (!lessonName || !descriptionMD || !partId || !courseId) {
         throw new HttpException(400, "Missing fields");
       }
+      const isCourseApproved = await this.prisma.course.findFirst({
+        where: {
+          id: courseId,
+          status: CourseStatus.APPROVED,
+        },
+      });
       const lesson = await this.prisma.lesson.create({
         data: {
           lessonName,
+          duration: video ? video.duration : 0,
           lessonNumber: Number(lessonNumber),
           part: { connect: { id: partId } },
           trialAllowed: trialAllowed || false,
           descriptionMD,
-          status: LessonStatus.PENDING,
+          status: isCourseApproved
+            ? LessonStatus.APPROVED
+            : LessonStatus.PENDING,
           user: { connect: { id: req.user.id } },
           videoFileId: (video as File).id,
           thumbnailFileId: (thumbnail as File).id,

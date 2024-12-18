@@ -12,7 +12,6 @@ import {
 } from "@prisma/client";
 import { fileMiddleware } from "../../middlewares/file.middleware";
 import { KGBAuth } from "../../configs/passport";
-import { removeAccent } from "../../util";
 import { updateSearchAccent } from "../../util/searchAccent";
 export default class ChatController extends BaseController {
   public path = "/api/v1/chats";
@@ -631,7 +630,7 @@ export default class ChatController extends BaseController {
           fileId: attachment.id,
           mimetype: attachment.mimetype,
           originalName: attachment.originalName,
-          // conversation: { connect: { id: conversation.id } },
+          conversation: { connect: { id: conversation.id } },
         },
       });
       await updateSearchAccent("attachment", __.id);
