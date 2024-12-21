@@ -5,7 +5,7 @@ import sendEmail from "../../email/process";
 import RejectForm from "../../email/templates/reject";
 import AcceptForm from "../../email/templates/accept";
 import Welcome from "../../email/templates/welcome";
-import { KGBResponse } from "../../global";
+import { KGBResponse } from "../../util/global";
 import { normalizeEmail } from "../../util";
 
 export default class TestController extends BaseController {

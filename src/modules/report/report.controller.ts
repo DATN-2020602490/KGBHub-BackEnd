@@ -4,9 +4,9 @@ import {
   KGBResponse,
   ReportTable,
   userSelector,
-} from "../../global";
+} from "../../util/global";
 import { KGBAuth } from "../../configs/passport";
-import { KGBRequest } from "../../global";
+import { KGBRequest } from "../../util/global";
 import checkRoleMiddleware from "../../middlewares/checkRole.middleware";
 import { RoleEnum, OrderStatus } from "@prisma/client";
 import { groupOrdersByDate, processOrdersReportAuthor } from "./report.service";

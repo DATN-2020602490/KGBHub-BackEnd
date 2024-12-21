@@ -1,5 +1,5 @@
 import { NextFunction } from "express";
-import { KGBRequest, KGBResponse } from "../global";
+import { KGBRequest, KGBResponse } from "../util/global";
 
 type Res = {
   url?: string;

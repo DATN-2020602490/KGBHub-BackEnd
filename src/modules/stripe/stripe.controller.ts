@@ -1,13 +1,19 @@
 import { BaseController } from "../../abstractions/base.controller";
 import express from "express";
 import stripe from "../../configs/stripe";
-import { KGBRequest, KGBResponse, userSelector } from "../../global";
+import { KGBRequest, KGBResponse, userSelector } from "../../util/global";
 import {
+  bindingPriceForProductOrder,
   createLineItems,
   notPaidCourses,
   onStripeHook,
 } from "./stripe.service";
-import { CourseStatus, Currency, OrderStatus } from "@prisma/client";
+import {
+  CourseStatus,
+  Currency,
+  OrderStatus,
+  ProductType,
+} from "@prisma/client";
 import HttpException from "../../exceptions/http-exception";
 import NotFoundException from "../../exceptions/not-found";
 import BigNumber from "bignumber.js";
@@ -127,7 +133,8 @@ export default class StripeController extends BaseController {
         order: { connect: { id: order.id } },
       },
     });
-    return res.status(200).json(order);
+    res.status(200).json(order);
+    await bindingPriceForProductOrder(order.id);
   };
 
   checkoutFromCart = async (req: KGBRequest, res: KGBResponse) => {
@@ -197,16 +204,9 @@ export default class StripeController extends BaseController {
           order: { connect: { id: order.id } },
         },
       });
-      const cOC = await this.prisma.coursesOnCarts.findFirst({
-        where: { courseId: _, cartId: cart.id },
-      });
-      if (cOC) {
-        await this.prisma.coursesOnCarts.deleteMany({
-          where: { courseId: _, cartId: cart.id },
-        });
-      }
     }
-    return res.status(200).json(order);
+    res.status(200).json(order);
+    await bindingPriceForProductOrder(order.id);
   };
 
   getOrders = async (req: KGBRequest, res: KGBResponse) => {
@@ -236,10 +236,23 @@ export default class StripeController extends BaseController {
       where: { id },
       include: {
         user: userSelector,
-        productOrders: { include: { product: { include: { course: true } } } },
+        productOrders: { include: { product: true } },
       },
     });
     order.amount = order.amount + order.platformFee + order.KGBHubServiceTip;
+
+    const tipProduct = order.productOrders.find(
+      (po) => po.product.type === ProductType.KGBHUB_SERVICE_TIP,
+    );
+    const platformFeeProduct = order.productOrders.find(
+      (po) => po.product.type === ProductType.STRIPE_SERVICE_FEE,
+    );
+    const elseProducts = order.productOrders.filter(
+      (po) =>
+        po.product.type !== ProductType.KGBHUB_SERVICE_TIP &&
+        po.product.type !== ProductType.STRIPE_SERVICE_FEE,
+    );
+    order.productOrders = [tipProduct, platformFeeProduct, ...elseProducts];
     return res.status(200).json(order);
   };
 }

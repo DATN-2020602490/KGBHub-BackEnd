@@ -1,7 +1,7 @@
 import { BaseController } from "../../../abstractions/base.controller";
 import { KGBAuth } from "../../../configs/passport";
 import NotFoundException from "../../../exceptions/not-found";
-import { Bookmark, KGBRequest, KGBResponse, File } from "../../../global";
+import { Bookmark, KGBRequest, KGBResponse, File } from "../../../util/global";
 
 export default class BookmarkController extends BaseController {
   public path = "/api/v1-public/bookmarks";

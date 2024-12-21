@@ -1,6 +1,6 @@
 import { NextFunction } from "express";
 import { RoleEnum } from "@prisma/client";
-import { KGBRequest, KGBResponse } from "../global";
+import { KGBRequest, KGBResponse } from "../util/global";
 
 function checkRoleMiddleware(roles: RoleEnum[]) {
   return async (req: KGBRequest, res: KGBResponse, next: NextFunction) => {

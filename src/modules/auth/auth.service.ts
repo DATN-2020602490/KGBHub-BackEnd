@@ -1,6 +1,6 @@
 import { JwtPayload, verify } from "jsonwebtoken";
-import { User } from "../../global";
-import prisma from "../../configs/prisma";
+import { User } from "../../util/global";
+import prisma from "../../prisma";
 import { normalizeEmail } from "../../util";
 import { RoleEnum } from "@prisma/client";
 

@@ -3,7 +3,7 @@ import { KGBAuth } from "../../../configs/passport";
 import HttpException from "../../../exceptions/http-exception";
 import NotFoundException from "../../../exceptions/not-found";
 import { LessonStatus, CourseStatus, OrderStatus } from "@prisma/client";
-import { KGBRequest, KGBResponse } from "../../../global";
+import { KGBRequest, KGBResponse } from "../../../util/global";
 
 export default class PublicLessonController extends BaseController {
   public path = "/api/v1-public/lessons";

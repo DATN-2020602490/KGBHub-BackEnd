@@ -1,5 +1,5 @@
 import { BaseController } from "../../abstractions/base.controller";
-import { KGBRequest, KGBResponse } from "../../global";
+import { KGBRequest, KGBResponse } from "../../util/global";
 
 export default class ReportMockController extends BaseController {
   public path = "/api/v1/reports";

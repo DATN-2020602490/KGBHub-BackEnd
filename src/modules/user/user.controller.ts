@@ -1,17 +1,19 @@
 import { BaseController } from "../../abstractions/base.controller";
-import { KGBResponse, userSelector } from "../../global";
+import { Course, KGBResponse, userSelector } from "../../util/global";
 import { KGBAuth } from "../../configs/passport";
 import HttpException from "../../exceptions/http-exception";
 import NotFoundException from "../../exceptions/not-found";
 import {
   CourseCategory,
+  CourseStatus,
   FormStatus,
   OrderStatus,
   RoleEnum,
 } from "@prisma/client";
-import { File, KGBRequest } from "../../global";
+import { File, KGBRequest } from "../../util/global";
 import { fileMiddleware } from "../../middlewares/file.middleware";
-import { removeAccent, updateSearchAccent } from "../../util/searchAccent";
+import { removeAccent, updateSearchAccent } from "../../prisma/prisma.service";
+import { checkBadWord } from "../../util";
 
 export default class UserController extends BaseController {
   public path = "/api/v1/users";
@@ -86,19 +88,14 @@ export default class UserController extends BaseController {
   updateUser = async (req: KGBRequest, res: KGBResponse) => {
     const userRoles = req.user.roles;
     const id = req.gp<string>("id", undefined, String);
-    const {
-      username,
-      firstName,
-      lastName,
-      phone,
-      gender,
-      birthday,
-      syncWithGoogle,
-    } = req.body;
+    const { phone, gender, birthday, syncWithGoogle } = req.body;
     const user = await this.prisma.user.findFirst({ where: { id } });
     if (!user) {
       throw new NotFoundException("user", id);
     }
+    const username = req.gp<string>("username", user.username, checkBadWord);
+    const firstName = req.gp<string>("firstName", user.firstName, checkBadWord);
+    const lastName = req.gp<string>("lastName", user.lastName, checkBadWord);
     if (
       !(
         userRoles.find((userRole) => userRole.role.name === RoleEnum.ADMIN) ||
@@ -258,7 +255,17 @@ export default class UserController extends BaseController {
     } else {
       throw new HttpException(400, "Please provide selfie");
     }
-    const { real_firstName, real_lastName, linkCV } = req.body;
+    const { linkCV } = req.body;
+    const real_firstName = req.gp<string>(
+      "real_firstName",
+      undefined,
+      checkBadWord,
+    );
+    const real_lastName = req.gp<string>(
+      "real_lastName",
+      undefined,
+      checkBadWord,
+    );
     const category = req.body.category as CourseCategory;
     if (!real_firstName || !real_lastName) {
       throw new HttpException(400, "Please provide your real name");
@@ -305,14 +312,104 @@ export default class UserController extends BaseController {
     return res.status(200).json({ lessonHearted, courseHearted });
   };
   getBought = async (req: KGBRequest, res: KGBResponse) => {
-    const course = await this.prisma.coursesPaid.findMany({
+    const limit = Number(req.query.limit) || 12;
+    const offset = Number(req.query.offset) || 0;
+    const orderBy = (req.query.orderBy as string) || "createdAt";
+    const direction = (req.query.direction as "asc" | "desc") || "desc";
+    const courses = (await this.prisma.course.findMany({
       where: {
-        userId: req.user.id,
-        order: { status: OrderStatus.SUCCESS },
+        coursesPaid: {
+          some: { userId: req.user.id, order: { status: OrderStatus.SUCCESS } },
+        },
+        isPublic: true,
+        status: CourseStatus.APPROVED,
       },
-      include: { course: true },
+      orderBy: [
+        {
+          [orderBy]: direction,
+        },
+      ],
+      include: {
+        user: userSelector,
+        coursesPaid: {
+          where: { order: { status: OrderStatus.SUCCESS } },
+          include: {
+            order: { include: { vouchers: true } },
+            user: userSelector,
+          },
+        },
+        parts: {
+          include: {
+            lessons: true,
+          },
+        },
+      },
+    })) as Course[];
+    const total = await this.prisma.course.count({
+      where: {
+        coursesPaid: {
+          some: { userId: req.user.id, order: { status: OrderStatus.SUCCESS } },
+        },
+        isPublic: true,
+        status: CourseStatus.APPROVED,
+      },
     });
-    return res.status(200).json(course);
+
+    for (const course of courses) {
+      const totalBought = course.coursesPaid.filter(
+        (cp) => cp.order.status === OrderStatus.SUCCESS,
+      ).length;
+      course["totalBought"] = totalBought;
+      if (req.user) {
+        const [isHearted, isBought, lessonDones, rating] = await Promise.all([
+          this.prisma.heart.findFirst({
+            where: {
+              userId: req.user.id,
+              courseId: course.id,
+            },
+          }),
+          this.prisma.coursesPaid.findFirst({
+            where: {
+              userId: req.user.id,
+              courseId: course.id,
+              order: { status: OrderStatus.SUCCESS },
+            },
+          }),
+          this.prisma.lessonDone.findMany({
+            where: {
+              userId: req.user.id,
+              lesson: {
+                part: {
+                  courseId: course.id,
+                },
+              },
+            },
+            orderBy: {
+              createdAt: "desc",
+            },
+          }),
+          this.prisma.rating.findFirst({
+            where: {
+              courseId: course.id,
+              userId: req.user.id,
+            },
+          }),
+        ]);
+        course["isHearted"] = !!isHearted;
+        course["isBought"] = !!isBought;
+        course["currentLessonId"] = lessonDones[0]?.lessonId;
+        course["process"] = lessonDones.length
+          ? Math.floor((lessonDones.length / course.totalLesson) * 100)
+          : 0;
+        course["myRating"] = rating;
+      }
+    }
+    return res.status(200).json({
+      courses,
+      total,
+      page: offset / limit + 1,
+      limit,
+    });
   };
   getRated = async (req: KGBRequest, res: KGBResponse) => {
     const reqUser = req.user;
@@ -379,7 +476,17 @@ export default class UserController extends BaseController {
     if (!(is15Days && myForm.status === FormStatus.REJECTED)) {
       throw new HttpException(400, "You can only update form every 15 days");
     }
-    const { real_firstName, real_lastName, linkCV } = req.body;
+    const { linkCV } = req.body;
+    const real_firstName = req.gp<string>(
+      "real_firstName",
+      myForm.real_firstName,
+      checkBadWord,
+    );
+    const real_lastName = req.gp<string>(
+      "real_lastName",
+      myForm.real_lastName,
+      checkBadWord,
+    );
     const category = req.body.category as CourseCategory;
     if (!real_firstName || !real_lastName) {
       throw new HttpException(400, "Please provide your real name");
@@ -401,7 +508,7 @@ export default class UserController extends BaseController {
   };
 
   searchAuthor = async (req: KGBRequest, res: KGBResponse) => {
-    const search = req.gp<string>("search", null, String);
+    const search = req.gp<string>("search", null, checkBadWord);
     const limit = req.gp<number>("limit", 12, Number);
     const offset = req.gp<number>("offset", 0, Number);
     const where = {
@@ -420,7 +527,7 @@ export default class UserController extends BaseController {
   };
 
   searchUser = async (req: KGBRequest, res: KGBResponse) => {
-    const search = req.gp<string>("search", null, String);
+    const search = req.gp<string>("search", null, checkBadWord);
     const limit = req.gp<number>("limit", 12, Number);
     const offset = req.gp<number>("offset", 0, Number);
     const where = {};

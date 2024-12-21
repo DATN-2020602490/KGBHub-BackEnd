@@ -1,5 +1,5 @@
 import { LessonStatus } from "@prisma/client";
-import prisma from "../../configs/prisma";
+import prisma from "../../prisma";
 import { refreshCourse } from "../course/course.service";
 
 export const getLesson = async (

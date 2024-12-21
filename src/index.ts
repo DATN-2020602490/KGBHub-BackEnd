@@ -1,33 +1,12 @@
 import "dotenv/config";
-import App from "./app";
-import StripeChecker from "./configs/stripe.checker";
-import migrate from "./migrate";
-import "./configs/prisma.middleware";
-import RefreshData from "./configs/refresh.data";
+import StripeChecker from "./configs/cron/stripe.checker";
+import migrate from "./util/migrate";
+import RefreshData from "./configs/cron/refresh.data";
 import { defaultImage, sleep } from "./util";
+import app from "./app";
 
 async function bootstrap() {
   try {
-    (global as any).check = (condition: any, message: string | Error) => {
-      if (!condition) {
-        if (typeof message === "string") {
-          const error = new Error();
-
-          if (typeof message === "string") {
-            error.message = message;
-          } else {
-            Object.assign(error, message);
-          }
-
-          throw error;
-        }
-        throw message;
-      }
-    };
-
-    const port = process.env.PORT || 3000;
-    const app = new App(port);
-
     app.listen();
     defaultImage().catch(console.log);
     migrate.init();

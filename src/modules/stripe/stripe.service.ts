@@ -8,11 +8,11 @@ import {
   ChatMemberRole,
   UserView,
 } from "@prisma/client";
-import prisma from "../../configs/prisma";
+import prisma from "../../prisma";
 import stripe from "../../configs/stripe";
 import BigNumber from "bignumber.js";
 import { toLower } from "lodash";
-import { userSelector, Voucher } from "../../global";
+import { userSelector, Voucher } from "../../util/global";
 import IO from "../../socket/io";
 import { findX } from "../report/report.service";
 
@@ -82,6 +82,12 @@ export const onOrderPaid = async (order: Order, io: IO) => {
         },
       });
       for (const course of courses) {
+        await prisma.coursesOnCarts.deleteMany({
+          where: {
+            cart: { userId: order.userId },
+            courseId: course.id,
+          },
+        });
         for (const conversation of course.conversations) {
           if (
             !conversation.chatMembers.find(
@@ -449,10 +455,16 @@ export const bindingPriceForProductOrder = async (id: string) => {
     where: { id },
     include: {
       coursesPaids: { include: { course: { include: { products: true } } } },
+      productOrders: true,
     },
   });
   if (!order) {
     return;
+  }
+  if (order.productOrders.length > 0) {
+    await prisma.productOrder.deleteMany({
+      where: { orderId: id },
+    });
   }
   const tipProduct = await prisma.product.findFirst({
     where: { type: ProductType.KGBHUB_SERVICE_TIP },

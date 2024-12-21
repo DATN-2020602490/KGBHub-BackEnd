@@ -1,6 +1,6 @@
 import { NextFunction } from "express";
-import { File, KGBRequest, KGBResponse } from "../global";
-import prisma from "../configs/prisma";
+import { File, KGBRequest, KGBResponse } from "../util/global";
+import prisma from "../prisma";
 import getVideoDurationInSeconds from "get-video-duration";
 import { isArray } from "lodash";
 import { KGBUploader } from "../configs/multer";

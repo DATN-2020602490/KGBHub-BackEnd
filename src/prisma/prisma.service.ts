@@ -1,5 +1,6 @@
 import { htmlToText } from "html-to-text";
-import prisma from "../configs/prisma";
+import prisma from ".";
+import { cloneDeep, isArray, isDate, isObjectLike } from "lodash";
 
 export const searchAccentMap = [
   {
@@ -142,4 +143,28 @@ export const removeAccent = (text) => {
       .replace(/\s+/g, " ")
       .replace(/[^a-zA-Z0-9]/g, ""),
   );
+};
+
+export const processRecords = (data) => {
+  if (isArray(data)) {
+    return data.map((item) => processRecords(item));
+  }
+
+  if (data && isObjectLike(data) && !isDate(data)) {
+    const newData = cloneDeep(data);
+
+    removeFields(newData, ["searchAccent", "deletedAt"]);
+
+    Object.entries(newData).forEach(([key, value]) => {
+      newData[key] = processRecords(value);
+    });
+
+    return newData;
+  }
+
+  return data;
+};
+
+const removeFields = (obj, fields) => {
+  fields.forEach((field) => delete obj[field]);
 };

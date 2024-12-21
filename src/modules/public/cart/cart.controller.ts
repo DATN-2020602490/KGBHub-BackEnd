@@ -3,7 +3,7 @@ import { KGBAuth } from "../../../configs/passport";
 import NotFoundException from "../../../exceptions/not-found";
 import HttpException from "../../../exceptions/http-exception";
 import { CourseStatus, OrderStatus } from "@prisma/client";
-import { KGBRequest, KGBResponse } from "../../../global";
+import { KGBRequest, KGBResponse } from "../../../util/global";
 
 export default class CartController extends BaseController {
   public path = "/api/v1-public/carts";
@@ -79,12 +79,18 @@ export default class CartController extends BaseController {
       if (!course) {
         continue;
       }
+      console.log(courseId);
+
       const cOC = await this.prisma.coursesOnCarts.findFirst({
         where: { cartId: cart.id, courseId },
       });
+      console.log(cart.id);
+
       if (!cOC) {
         continue;
       }
+      console.log(cOC);
+
       await this.prisma.coursesOnCarts.deleteMany({
         where: { cartId: cart.id, courseId },
       });

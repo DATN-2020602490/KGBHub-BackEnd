@@ -1,6 +1,6 @@
 import { CronJob } from "cron";
-import { updateOrderStatus } from "../modules/stripe/stripe.service";
-import IO from "../socket/io";
+import { updateOrderStatus } from "../../modules/stripe/stripe.service";
+import IO from "../../socket/io";
 
 class StripeChecker {
   static start = (io: IO) => {

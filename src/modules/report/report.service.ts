@@ -3,7 +3,7 @@ import {
   GLOBAL_REVENUE_SHARE,
   Order,
   ReportData,
-} from "../../global";
+} from "../../util/global";
 
 export const groupOrdersByDate = (
   orders: any[],

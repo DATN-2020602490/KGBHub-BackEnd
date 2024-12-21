@@ -1,5 +1,5 @@
 import { BaseController } from "../../abstractions/base.controller";
-import { KGBResponse } from "../../global";
+import { KGBResponse } from "../../util/global";
 import NotFoundException from "../../exceptions/not-found";
 import { KGBAuth } from "../../configs/passport";
 import HttpException from "../../exceptions/http-exception";
@@ -10,11 +10,12 @@ import {
   LessonStatus,
   CourseStatus,
 } from "@prisma/client";
-import { KGBRequest, File } from "../../global";
+import { KGBRequest, File } from "../../util/global";
 import { fileMiddleware } from "../../middlewares/file.middleware";
 import { deleteLesson, getLesson, getLessons } from "./lesson.service";
 import { refreshCourse } from "../course/course.service";
-import { updateSearchAccent } from "../../util/searchAccent";
+import { updateSearchAccent } from "../../prisma/prisma.service";
+import { checkBadWord } from "../../util";
 
 export default class LessonController extends BaseController {
   public path = "/api/v1/lessons";
@@ -86,7 +87,12 @@ export default class LessonController extends BaseController {
           part: { courseId: req.body.courseId },
         },
       });
-      const { lessonName, descriptionMD } = req.body;
+      const lessonName = req.gp<string>("lessonName", undefined, checkBadWord);
+      const descriptionMD = req.gp<string>(
+        "descriptionMD",
+        undefined,
+        checkBadWord,
+      );
       const lessonNumber = req.gp<number>(
         "lessonNumber",
         lessonCount + 1,
@@ -222,7 +228,17 @@ export default class LessonController extends BaseController {
       throw new NotFoundException("lesson", id);
     }
     if (lesson.lessonType === LessonType.VIDEO) {
-      const { lessonName, lessonNumber, partId, descriptionMD } = req.body;
+      const { lessonNumber, partId } = req.body;
+      const lessonName = req.gp<string>(
+        "lessonName",
+        lesson.lessonName,
+        checkBadWord,
+      );
+      const descriptionMD = req.gp<string>(
+        "descriptionMD",
+        lesson.descriptionMD,
+        checkBadWord,
+      );
       let trialAllowed = lesson.trialAllowed;
       if (req.body.trialAllowed) {
         trialAllowed = req.body.trialAllowed === "true";
@@ -272,15 +288,17 @@ export default class LessonController extends BaseController {
       await updateSearchAccent("lesson", id);
       return res.status(200).json(newLesson);
     } else if (lesson.lessonType === LessonType.TEXT) {
-      const {
-        lessonName,
-        lessonNumber,
-        partId,
-        trialAllowed,
-        descriptionMD,
-        title,
-        content,
-      } = req.body;
+      const { lessonNumber, partId, trialAllowed, title, content } = req.body;
+      const lessonName = req.gp<string>(
+        "lessonName",
+        lesson.lessonName,
+        checkBadWord,
+      );
+      const descriptionMD = req.gp<string>(
+        "descriptionMD",
+        lesson.descriptionMD,
+        checkBadWord,
+      );
 
       let thumbnail: File = null;
       const thumbnailFile = req.fileModelsWithFieldName?.thumbnail

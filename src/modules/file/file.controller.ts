@@ -1,13 +1,12 @@
 import { BaseController } from "../../abstractions/base.controller";
-import { KGBResponse } from "../../global";
-import NotFoundException from "../../exceptions/not-found";
+import { KGBResponse } from "../../util/global";
 import path from "path";
 import { createReadStream, existsSync, statSync } from "fs";
 import HttpException from "../../exceptions/http-exception";
 import { KGBAuth } from "../../configs/passport";
 import { OrderStatus, RoleEnum } from "@prisma/client";
 import checkRoleMiddleware from "../../middlewares/checkRole.middleware";
-import { KGBRequest } from "../../global";
+import { KGBRequest } from "../../util/global";
 import { fileMiddleware } from "../../middlewares/file.middleware";
 import { decodeJWT } from "../auth/auth.service";
 
@@ -60,7 +59,7 @@ export default class FileController extends BaseController {
       : ["mp4", "mov"].includes(filename.split(".")[1])
       ? "video"
       : "unknown";
-
+    const encodedFileName = encodeURIComponent(file.originalName);
     if (fileType === "image" || fileType === "unknown") {
       const _path = path.resolve(`uploads/${filename}` as string);
       const stat = statSync(_path);
@@ -71,6 +70,7 @@ export default class FileController extends BaseController {
           fileType === "image"
             ? `image/${filename.split(".")[1]}`
             : "application/octet-stream",
+        "Content-Disposition": `attachment; filename="${encodedFileName}"`,
       };
       res.writeHead(200, head);
       createReadStream(_path).pipe(res);

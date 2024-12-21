@@ -2,7 +2,7 @@ import multer from "multer";
 import { createWriteStream, existsSync, mkdirSync, statSync } from "fs";
 import path from "path";
 import axios from "axios";
-import prisma from "./prisma";
+import prisma from "../prisma";
 import { lookup } from "mime-types";
 
 const storage = multer.diskStorage({

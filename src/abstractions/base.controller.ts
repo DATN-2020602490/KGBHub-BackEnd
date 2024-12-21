@@ -1,8 +1,7 @@
-import { PrismaClient } from "@prisma/client";
 import { Router, NextFunction } from "express";
 import IO from "../socket/io";
-import prisma from "../configs/prisma";
-import { KGBRequest, KGBResponse } from "../global";
+import prisma from "../prisma";
+import { ExtendPrisma, KGBRequest, KGBResponse } from "../util/global";
 import { normalizeEmail } from "../util";
 
 class CustomRouter {
@@ -64,7 +63,7 @@ class CustomRouter {
 
 export abstract class BaseController {
   public router: CustomRouter;
-  public prisma: PrismaClient;
+  public prisma: ExtendPrisma;
   public io: IO;
   public path: string;
 

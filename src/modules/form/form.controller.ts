@@ -1,13 +1,13 @@
 import { BaseController } from "../../abstractions/base.controller";
 import { KGBAuth } from "../../configs/passport";
 import checkRoleMiddleware from "../../middlewares/checkRole.middleware";
-import { KGBResponse } from "../../global";
+import { KGBResponse } from "../../util/global";
 import { render } from "@react-email/render";
 import sendEmail from "../../email/process";
 import AcceptForm from "../../email/templates/accept";
 import RejectForm from "../../email/templates/reject";
 import { RoleEnum, FormStatus } from "@prisma/client";
-import { KGBRequest } from "../../global";
+import { KGBRequest } from "../../util/global";
 
 export default class FormController extends BaseController {
   public path = "/api/v1/forms";

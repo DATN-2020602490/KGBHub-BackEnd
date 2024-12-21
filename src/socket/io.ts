@@ -10,10 +10,11 @@ import {
   ConversationWithLastMessage,
   KGBRemoteSocket,
   userSelector,
-} from "../global";
+} from "../util/global";
 import { CourseStatus, MemberStatus, UserView } from "@prisma/client";
-import prisma from "../configs/prisma";
-import { updateSearchAccent } from "../util/searchAccent";
+import prisma from "../prisma";
+import { updateSearchAccent } from "../prisma/prisma.service";
+import { censorProfane } from "../util";
 
 class IO {
   public io: SocketServer;
@@ -506,7 +507,8 @@ class IO {
         targetMessageId: string | string;
       }) => {
         try {
-          const { id, content, attachments } = data;
+          const { id, attachments } = data;
+          const content = data.content ? censorProfane(data.content) : "";
           let targetMessageId = data.targetMessageId;
           if (!id) {
             socket.emit("sendMessage", { error: "Invalid conversationId" });

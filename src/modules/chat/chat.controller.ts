@@ -1,6 +1,6 @@
 import { BaseController } from "../../abstractions/base.controller";
-import { File, KGBResponse, userSelector } from "../../global";
-import { Attachment, Message, KGBRequest } from "../../global";
+import { File, KGBResponse, userSelector } from "../../util/global";
+import { Attachment, Message, KGBRequest } from "../../util/global";
 import NotFoundException from "../../exceptions/not-found";
 import HttpException from "../../exceptions/http-exception";
 import { createChat } from "./chat.service";
@@ -12,7 +12,8 @@ import {
 } from "@prisma/client";
 import { fileMiddleware } from "../../middlewares/file.middleware";
 import { KGBAuth } from "../../configs/passport";
-import { updateSearchAccent } from "../../util/searchAccent";
+import { updateSearchAccent } from "../../prisma/prisma.service";
+import { checkBadWord } from "../../util";
 export default class ChatController extends BaseController {
   public path = "/api/v1/chats";
 
@@ -28,7 +29,6 @@ export default class ChatController extends BaseController {
       fileMiddleware([{ name: "attachments", maxCount: 10 }]),
       this.uploadAttachments,
     );
-    this.router.post("/actions/join", KGBAuth("jwt"), this.joinChat);
     this.router.post("/actions/leave", KGBAuth("jwt"), this.leaveChat);
     this.router.post("/actions/remove", KGBAuth("jwt"), this.removeChat);
     this.router.post("/actions/add-members", KGBAuth("jwt"), this.addMembers);
@@ -159,6 +159,7 @@ export default class ChatController extends BaseController {
     const conversationId = req.gp<string>("conversationId", undefined, String);
     const conversation = await this.prisma.conversation.findFirst({
       where: {
+        conversationType: ConversationType.GROUP_CHAT,
         id: conversationId,
         chatMembers: {
           some: { userId: reqUser.id, chatMemberRole: ChatMemberRole.ADMIN },
@@ -174,8 +175,8 @@ export default class ChatController extends BaseController {
     const users = req.body.users;
     const result = [];
     for (const u of users) {
-      const { username, chatMemberRole } = u;
-      const user = await this.prisma.user.findFirst({ where: { username } });
+      const { id, chatMemberRole } = u;
+      const user = await this.prisma.user.findFirst({ where: { id } });
       if (!user) {
         continue;
       }
@@ -240,7 +241,11 @@ export default class ChatController extends BaseController {
     if (!conversation) {
       throw new NotFoundException("conversation", conversationId);
     }
-    const conversationName = req.body.conversationName;
+    const conversationName = req.gp<string>(
+      "conversationName",
+      conversation.conversationName,
+      checkBadWord,
+    );
     const avatar = req.body.avatarFileId;
     const cvs = await this.prisma.conversation.update({
       where: { id: conversationId },
@@ -263,6 +268,7 @@ export default class ChatController extends BaseController {
       }
       await this.io.sendChatList(socket.user.id, conversation.id, socket);
     }
+    await updateSearchAccent("conversation", conversationId);
     // const sockets: any[] = await this.io.io.of(this.io.chatNamespaceRouter).fetchSockets()
     // for (const s of sockets) {
     //   if (!s.user) {
@@ -283,16 +289,17 @@ export default class ChatController extends BaseController {
   };
   removeChat = async (req: KGBRequest, res: KGBResponse) => {
     const conversationId = req.gp<string>("conversationId", undefined, String);
-    const username = req.gp<string>("username", undefined, String);
+    const id = req.gp<string>("userId", undefined, String);
     const user = await this.prisma.user.findFirst({
-      where: { username: username },
+      where: { id: id },
     });
     if (!user) {
-      throw new NotFoundException("user", username);
+      throw new NotFoundException("user", id);
     }
     const conversation = await this.prisma.conversation.findFirst({
       where: {
         id: conversationId,
+        conversationType: ConversationType.GROUP_CHAT,
         chatMembers: {
           some: { userId: req.user.id, chatMemberRole: ChatMemberRole.ADMIN },
         },
@@ -374,66 +381,6 @@ export default class ChatController extends BaseController {
     await this.prisma.chatMember.updateMany({
       where: { conversationId, userId: reqUser.id },
       data: { status: MemberStatus.REMOVED },
-    });
-    res.status(200).json(chatMember);
-    const chatMembers = await this.prisma.chatMember.findMany({
-      where: { conversationId, status: MemberStatus.ACTIVE },
-    });
-    const sockets = await this.io.fetchSockets(
-      chatMembers.map((_) => _.userId),
-    );
-    for (const socket of sockets) {
-      if (!socket.user) {
-        continue;
-      }
-      await this.io.sendChatList(socket.user.id, conversation.id, socket);
-    }
-    // const sockets: any[] = await this.io.io.of(this.io.chatNamespaceRouter).fetchSockets()
-    // for (const s of sockets) {
-    //   if (!s.user) {
-    //     continue
-    //   }
-    //   const isInRoom = await this.prisma.chatMember.findFirst({
-    //     where: {
-    //       userId: s.user.id,
-    //       conversationId: conversation.id,
-    //       status: MemberStatus.ACTIVE,
-    //     },
-    //   })
-    //   if (isInRoom) {
-    //     const chatList = await this.io.chatList(s.user.id)
-    //     s.emit('getChats', chatList)
-    //   }
-    // }
-  };
-  joinChat = async (req: KGBRequest, res: KGBResponse) => {
-    const reqUser = req.user;
-    const conversationId = req.gp<string>("conversationId", undefined, String);
-    const conversation = await this.prisma.conversation.findFirst({
-      where: {
-        id: conversationId,
-        chatMembers: { some: { userId: reqUser.id } },
-      },
-    });
-    if (conversation) {
-      throw new HttpException(
-        400,
-        "You are already a member of this conversation",
-      );
-    }
-    if (conversation.conversationType !== ConversationType.COURSE_GROUP_CHAT) {
-      throw new HttpException(
-        400,
-        "You are not allowed to join this conversation",
-      );
-    }
-    const chatMember = await this.prisma.chatMember.create({
-      data: {
-        conversation: { connect: { id: conversationId } },
-        user: { connect: { id: reqUser.id } },
-        status: MemberStatus.ACTIVE,
-        chatMemberRole: ChatMemberRole.MEMBER,
-      },
     });
     res.status(200).json(chatMember);
     const chatMembers = await this.prisma.chatMember.findMany({

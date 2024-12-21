@@ -8,11 +8,11 @@ import passport from "passport";
 import { render } from "@react-email/render";
 import sendEmail from "../email/process";
 import WelcomeEmail from "../email/templates/welcome";
-import prisma from "./prisma";
+import prisma from "../prisma";
 import { Platform, RoleEnum } from "@prisma/client";
 import { downloadImage } from "./multer";
 import { getUniqueSuffix, normalizeEmail } from "../util";
-import { updateSearchAccent } from "../util/searchAccent";
+import { updateSearchAccent } from "../prisma/prisma.service";
 import { handleCloudSaveConversation } from "../modules/chat/chat.service";
 
 const User = prisma.user;

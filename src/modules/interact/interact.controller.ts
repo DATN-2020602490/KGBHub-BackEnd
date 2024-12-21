@@ -1,11 +1,12 @@
 import { BaseController } from "../../abstractions/base.controller";
-import { KGBResponse, userSelector } from "../../global";
+import { KGBResponse, userSelector } from "../../util/global";
 import { KGBAuth } from "../../configs/passport";
 import NotFoundException from "../../exceptions/not-found";
 import HttpException from "../../exceptions/http-exception";
-import { KGBRequest } from "../../global";
+import { KGBRequest } from "../../util/global";
 import { decodeJWT } from "../auth/auth.service";
-import { updateSearchAccent } from "../../util/searchAccent";
+import { updateSearchAccent } from "../../prisma/prisma.service";
+import { censorProfane } from "../../util";
 
 export default class InteractController extends BaseController {
   public path = "/api/v1/interacts";
@@ -79,7 +80,7 @@ export default class InteractController extends BaseController {
   rateAction = async (req: KGBRequest, res: KGBResponse) => {
     const reqUser = req.user;
     const courseId = req.gp<string>("courseId", undefined, String);
-    const content = req.gp<string>("content", null, String);
+    const content = req.gp<string>("content", null, censorProfane);
     if (!courseId) {
       throw new HttpException(400, "courseId is missing");
     }
@@ -300,7 +301,8 @@ export default class InteractController extends BaseController {
       throw new NotFoundException(targetResource, id);
     }
 
-    const { content, level } = req.body;
+    const { level } = req.body;
+    const content = req.gp<string>("content", undefined, censorProfane);
 
     if (!content) {
       throw new HttpException(400, "Where tf is your comment content");
@@ -355,7 +357,7 @@ export default class InteractController extends BaseController {
       throw new HttpException(401, "Unauthorized");
     }
 
-    const { content } = req.body;
+    const content = req.gp<string>("content", comment.content, censorProfane);
     await this.prisma.comment.update({
       where: { id },
       data: { content },

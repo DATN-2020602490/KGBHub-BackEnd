@@ -5,20 +5,23 @@ import {
   Currency,
   LessonType,
   OrderStatus,
+  ProductType,
   RoleEnum,
+  UserView,
   VoucherType,
 } from "@prisma/client";
-import prisma from "./configs/prisma";
-import stripe from "./configs/stripe";
+import prisma from "../prisma";
+import stripe from "../configs/stripe";
 import { convert } from "html-to-text";
 import {
   bindingPriceForProductOrder,
   getPlatformFee,
-} from "./modules/stripe/stripe.service";
+} from "../modules/stripe/stripe.service";
 import BigNumber from "bignumber.js";
-import { refreshCourse } from "./modules/course/course.service";
-import { updateSearchAccent } from "./util/searchAccent";
-import { handleCloudSaveConversation } from "./modules/chat/chat.service";
+import { refreshCourse } from "../modules/course/course.service";
+import { updateSearchAccent } from "../prisma/prisma.service";
+import { handleCloudSaveConversation } from "../modules/chat/chat.service";
+import { censorProfane } from ".";
 
 type MigrateFunction = () => void;
 
@@ -383,6 +386,182 @@ migrate.add("add_product_order_price", async () => {
   const orders = await prisma.order.findMany({});
   for (const order of orders) {
     bindingPriceForProductOrder(order.id);
+  }
+});
+
+migrate.add("remove_trash_data_chat", async () => {
+  const conversation = await prisma.conversation.findMany({
+    where: {
+      conversationType: ConversationType.GROUP_CHAT,
+    },
+  });
+  for (const cv of conversation) {
+    try {
+      await prisma.$transaction([
+        prisma.chatMembersOnMessages.deleteMany({
+          where: {
+            message: {
+              conversationId: cv.id,
+            },
+          },
+        }),
+        prisma.message.deleteMany({
+          where: {
+            conversationId: cv.id,
+          },
+        }),
+        prisma.chatMember.deleteMany({
+          where: {
+            conversationId: cv.id,
+          },
+        }),
+        prisma.conversation.deleteMany({
+          where: {
+            id: cv.id,
+          },
+        }),
+      ]);
+    } catch (e) {
+      console.log(e);
+    }
+  }
+});
+
+migrate.add("sensor_data", async () => {
+  const comment = await prisma.comment.findMany({});
+  for (const cm of comment) {
+    await prisma.comment.update({
+      where: { id: cm.id },
+      data: { content: censorProfane(cm.content) },
+    });
+  }
+  const message = await prisma.message.findMany({});
+  for (const msg of message) {
+    await prisma.message.update({
+      where: { id: msg.id },
+      data: { content: censorProfane(msg.content) },
+    });
+  }
+});
+
+migrate.add("remove_old_stripe_data", async () => {
+  const orders = await prisma.order.findMany({
+    include: {
+      productOrders: {
+        include: {
+          product: true,
+        },
+      },
+    },
+  });
+
+  for (const order of orders) {
+    let stripeOrder = null;
+    try {
+      stripeOrder = await stripe.checkout.sessions.retrieve(
+        order.stripeCheckoutId as string,
+      );
+    } catch (e) {}
+    if (stripeOrder) {
+      continue;
+    }
+    try {
+      order.productOrders = order.productOrders.filter((po) => {
+        return po.product.type === ProductType.COURSE;
+      });
+      const ids = [
+        ...new Set(order.productOrders.map((po) => po.product.courseId)),
+      ];
+      await prisma.coursesPaid.deleteMany({
+        where: { orderId: order.id },
+      });
+      await prisma.courseDone.deleteMany({
+        where: { courseId: { in: ids }, userId: order.userId },
+      });
+      await prisma.lessonDone.deleteMany({
+        where: {
+          lesson: { part: { courseId: { in: ids } } },
+          userId: order.userId,
+        },
+      });
+      await prisma.rating.deleteMany({
+        where: {
+          courseId: { in: ids },
+          userId: order.userId,
+        },
+      });
+      await prisma.bookmark.deleteMany({
+        where: {
+          courseId: { in: ids },
+          userId: order.userId,
+        },
+      });
+      await prisma.chatMembersOnMessages.deleteMany({
+        where: {
+          message: {
+            conversation: {
+              course: { id: { in: ids } },
+              conversationType: ConversationType.COURSE_GROUP_CHAT,
+            },
+          },
+          chatMember: {
+            userId: order.userId,
+            chatMemberRole: ChatMemberRole.MEMBER,
+          },
+        },
+      });
+      await prisma.message.deleteMany({
+        where: {
+          conversation: {
+            course: { id: { in: ids } },
+            conversationType: ConversationType.COURSE_GROUP_CHAT,
+          },
+          chatMembersOnMessages: {
+            some: {
+              userView: UserView.SENDER,
+              chatMember: {
+                userId: order.userId,
+                chatMemberRole: ChatMemberRole.MEMBER,
+              },
+            },
+          },
+        },
+      });
+      await prisma.chatMember.deleteMany({
+        where: {
+          conversation: {
+            course: { id: { in: ids } },
+            conversationType: ConversationType.COURSE_GROUP_CHAT,
+          },
+          userId: order.userId,
+          chatMemberRole: ChatMemberRole.MEMBER,
+        },
+      });
+      await prisma.productOrder.deleteMany({
+        where: { orderId: order.id },
+      });
+      await prisma.order.deleteMany({
+        where: { id: order.id },
+      });
+      const cart = await prisma.cart.findFirst({
+        where: { userId: order.userId },
+      });
+      ids.forEach(async (id) => {
+        await refreshCourse(id);
+        if (
+          await prisma.coursesOnCarts.findFirst({
+            where: { cartId: cart.id, courseId: id },
+          })
+        ) {
+          return;
+        }
+        await prisma.coursesOnCarts.create({
+          data: { cartId: cart.id, courseId: id },
+        });
+      });
+    } catch (e) {
+      console.log(e);
+    }
   }
 });
 

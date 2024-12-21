@@ -1,5 +1,5 @@
 import { BaseController } from "../../abstractions/base.controller";
-import { File, KGBResponse, userSelector } from "../../global";
+import { File, KGBResponse, userSelector } from "../../util/global";
 import { KGBAuth } from "../../configs/passport";
 import NotFoundException from "../../exceptions/not-found";
 import HttpException from "../../exceptions/http-exception";
@@ -15,7 +15,7 @@ import {
   ChatMemberRole,
   OrderStatus,
 } from "@prisma/client";
-import { KGBRequest } from "../../global";
+import { KGBRequest } from "../../util/global";
 import stripe from "../../configs/stripe";
 import BigNumber from "bignumber.js";
 import { fileMiddleware } from "../../middlewares/file.middleware";
@@ -28,8 +28,8 @@ import {
 } from "./course.service";
 import { convert } from "html-to-text";
 import { isString } from "lodash";
-import { generateRandomString } from "../../util";
-import { updateSearchAccent } from "../../util/searchAccent";
+import { checkBadWord, generateRandomString } from "../../util";
+import { updateSearchAccent } from "../../prisma/prisma.service";
 
 export default class CourseController extends BaseController {
   public path = "/api/v1/courses";
@@ -114,7 +114,6 @@ export default class CourseController extends BaseController {
         conversationType: ConversationType.COURSE_GROUP_CHAT,
       },
     });
-    await updateSearchAccent("course", course.id);
     await this.prisma.chatMember.create({
       data: {
         userId: reqUser.id,
@@ -122,13 +121,14 @@ export default class CourseController extends BaseController {
         conversationId: conversation.id,
       },
     });
+    await updateSearchAccent("conversation", conversation.id);
   };
 
   getCourses = async (req: KGBRequest, res: KGBResponse) => {
     const reqUser = req.user;
     const limit = Number(req.query.limit) || 12;
     const offset = Number(req.query.offset) || 0;
-    const search = req.gp<string>("search", null, String);
+    const search = req.gp<string>("search", null, checkBadWord);
     const orderBy = (req.query.orderBy as string) || "createdAt";
     const direction = (req.query.direction as "asc" | "desc") || "desc";
     const status = req.gp<CourseStatus>("status", null, CourseStatus);
@@ -190,11 +190,15 @@ export default class CourseController extends BaseController {
     ) {
       throw new HttpException(401, "Access denied");
     }
-    const courseName = req.gp<string>("courseName", course.courseName, String);
+    const courseName = req.gp<string>(
+      "courseName",
+      course.courseName,
+      checkBadWord,
+    );
     const descriptionMD = req.gp<string>(
       "descriptionMD",
       course.descriptionMD,
-      String,
+      checkBadWord,
     );
     const category = req.gp<CourseCategory>(
       "category",
@@ -214,6 +218,9 @@ export default class CourseController extends BaseController {
       !(courseName && knowledgeGained.length > 0 && descriptionMD && category)
     ) {
       return new HttpException(400, "missing required fields");
+    }
+    for (const k of knowledgeGained) {
+      checkBadWord(k);
     }
 
     const parts = await this.prisma.part.findMany({
@@ -265,7 +272,15 @@ export default class CourseController extends BaseController {
         conversationType: ConversationType.COURSE_GROUP_CHAT,
       },
     });
-    await updateSearchAccent("course", id);
+    this.prisma.conversation
+      .findMany({
+        where: { courseId: id },
+      })
+      .then(async (cvs) => {
+        for (const cv of cvs) {
+          await updateSearchAccent("conversation", cv.id);
+        }
+      });
   };
 
   deleteCourse = async (req: KGBRequest, res: KGBResponse) => {
@@ -312,7 +327,7 @@ export default class CourseController extends BaseController {
     const reqUser = req.user;
     const courseId = req.gp<string>("id", undefined, String);
     const partNumber = parseInt(req.body.partNumber);
-    const { partName } = req.body;
+    const partName = req.gp<string>("partName", undefined, checkBadWord);
     if (!partNumber || isNaN(partNumber) || !partName || !courseId) {
       throw new Error("Missing required fields");
     }
@@ -336,12 +351,17 @@ export default class CourseController extends BaseController {
     if (_) {
       throw new Error("Part number already exists");
     }
+    const description = req.gp<string>(
+      "description",
+      `${partNumber}: ${partName}`,
+      checkBadWord,
+    );
     const part = await this.prisma.part.create({
       data: {
         partNumber,
         partName,
         courseId,
-        description: req.body.description || `${partNumber}: ${partName}`,
+        description,
       },
     });
     await refreshPart(courseId);
@@ -395,15 +415,6 @@ export default class CourseController extends BaseController {
     const reqUser = req.user;
     const courseId = req.gp<string>("id", undefined, String);
     const partId = req.gp<string>("partId", undefined, String);
-    const { partName } = req.body;
-    let { partNumber } = req.body;
-    if (!partName || !courseId || !partId || !partNumber) {
-      throw new Error("Missing required fields");
-    }
-    partNumber = parseInt(partNumber || "-1");
-    if (partNumber < 0) {
-      throw new Error("Invalid part number");
-    }
     const course = await this.prisma.course.findFirst({
       where: { id: courseId },
     });
@@ -423,6 +434,12 @@ export default class CourseController extends BaseController {
     });
     if (!part) {
       throw new NotFoundException("part", partId);
+    }
+    const partName = req.gp<string>("partName", part.partName, checkBadWord);
+    let { partNumber } = req.body;
+    partNumber = parseInt(partNumber || "-1");
+    if (partNumber < 0) {
+      throw new Error("Invalid part number");
     }
     await this.prisma.part.update({
       where: { id: partId },

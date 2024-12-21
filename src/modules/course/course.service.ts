@@ -1,8 +1,8 @@
 import { ConversationType, CourseStatus, LessonType } from "@prisma/client";
-import prisma from "../../configs/prisma";
-import { userSelector } from "../../global";
+import prisma from "../../prisma";
+import { userSelector } from "../../util/global";
 import getVideoDurationInSeconds from "get-video-duration";
-import { removeAccent } from "../../util/searchAccent";
+import { removeAccent } from "../../prisma/prisma.service";
 
 export const refreshCourse = async (id: string) => {
   if (!id) return;

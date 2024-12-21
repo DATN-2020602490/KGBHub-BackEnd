@@ -1,15 +1,15 @@
 import { BaseController } from "../../../abstractions/base.controller";
 import { KGBAuth } from "../../../configs/passport";
-import HttpException from "../../../exceptions/http-exception";
 import NotFoundException from "../../../exceptions/not-found";
+import { CourseCategory, CourseStatus, OrderStatus } from "@prisma/client";
 import {
-  CourseCategory,
-  CourseStatus,
-  OrderStatus,
-  RoleEnum,
-} from "@prisma/client";
-import { Course, KGBRequest, KGBResponse, userSelector } from "../../../global";
-import { removeAccent } from "../../../util/searchAccent";
+  Course,
+  KGBRequest,
+  KGBResponse,
+  userSelector,
+} from "../../../util/global";
+import { removeAccent } from "../../../prisma/prisma.service";
+import { checkBadWord } from "../../../util";
 
 export default class PublicCourseController extends BaseController {
   public path = "/api/v1-public/courses";
@@ -22,12 +22,11 @@ export default class PublicCourseController extends BaseController {
   getCourses = async (req: KGBRequest, res: KGBResponse) => {
     const limit = Number(req.query.limit) || 12;
     const offset = Number(req.query.offset) || 0;
-    const search = req.gp<string>("search", null, String);
+    const search = req.gp<string>("search", null, checkBadWord);
     const categories = req.query.categories || "";
     const orderBy = (req.query.orderBy as string) || "createdAt";
     const direction = (req.query.direction as "asc" | "desc") || "desc";
     const isBestSeller = req.query.isBestSeller === "true";
-    const myOwn = req.query.myOwn === "true";
     const byAuthor = req.gp<string>("byAuthor", null, String);
 
     const query: any = {
@@ -50,21 +49,6 @@ export default class PublicCourseController extends BaseController {
 
     if (byAuthor) {
       query.where.userId = byAuthor;
-    }
-    if (myOwn && req.user) {
-      const reqUser = req.user;
-      if (!reqUser.roles.some((_) => _.role.name === RoleEnum.AUTHOR)) {
-        throw new HttpException(403, "Forbidden");
-      }
-      delete query.where.userId;
-      query.where.coursesPaid = {
-        some: {
-          userId: reqUser.id,
-          order: {
-            status: OrderStatus.SUCCESS,
-          },
-        },
-      };
     }
 
     if (search) {

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/ban-types */
 import { RemoteSocket, Socket } from "socket.io";
 import { Request, Response } from "express";
 import { DefaultEventsMap } from "socket.io/dist/typed-events";
@@ -20,7 +21,32 @@ import {
   UserView,
   CampaignType,
   VoucherType,
+  Prisma,
 } from "@prisma/client";
+import {
+  DynamicClientExtensionThis,
+  InternalArgs,
+} from "@prisma/client/runtime/library";
+
+export type ExtendPrisma = DynamicClientExtensionThis<
+  Prisma.TypeMap<
+    InternalArgs & {
+      result: {};
+      model: {};
+      query: {};
+      client: {};
+    },
+    Prisma.PrismaClientOptions
+  >,
+  Prisma.TypeMapCb,
+  {
+    result: {};
+    model: {};
+    query: {};
+    client: {};
+  },
+  {}
+>;
 
 export type KGBSocket = Socket & AddonUserOnSocket;
 

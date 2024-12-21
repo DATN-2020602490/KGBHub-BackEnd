@@ -1,5 +1,5 @@
 import { CampaignType } from "@prisma/client";
-import prisma from "../../configs/prisma";
+import prisma from "../../prisma";
 
 export const autoJoinedProductCampaign = async (id: string) => {
   const campaign = await prisma.campaign.findFirst({

@@ -1,6 +1,6 @@
 import { NextFunction } from "express";
-import { KGBRequest, KGBResponse } from "../global";
-import { normalizeEmail } from "../util";
+import { KGBRequest, KGBResponse } from "../util/global";
+import { checkCondition, normalizeEmail } from "../util";
 
 const genNextUrl = (data: any, req: KGBRequest) => {
   if (!Array.isArray(data)) {
@@ -39,7 +39,10 @@ export default (req: KGBRequest, res: KGBResponse, next: NextFunction) => {
       req.params[key],
       defaultValue,
     ].find((v) => v !== undefined);
-    check(value !== undefined, `Missing param: ${key} code:missing_param`);
+    checkCondition(
+      value !== undefined,
+      `Missing param: ${key} code:missing_param`,
+    );
 
     if (value === defaultValue) {
       return defaultValue;
@@ -56,12 +59,12 @@ export default (req: KGBRequest, res: KGBResponse, next: NextFunction) => {
         value = converted;
       }
     } else if (Array.isArray(validate)) {
-      check(
+      checkCondition(
         validate.includes(value),
         `Invalid param ${key}, accept: ${validate.join(", ")}`,
       );
     } else if (validate instanceof RegExp) {
-      check(
+      checkCondition(
         validate.test(value),
         `Invalid param ${key}, accept: ${validate.toString()}`,
       );
@@ -94,7 +97,7 @@ export default (req: KGBRequest, res: KGBResponse, next: NextFunction) => {
   };
 
   res.error = (error: string | Error) => {
-    check(false, error);
+    checkCondition(false, error);
   };
 
   next();

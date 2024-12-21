@@ -5,16 +5,16 @@ import {
   KGBRequest,
   KGBResponse,
   userSelector,
-} from "../../global";
+} from "../../util/global";
 import { checkRole } from "../auth/auth.service";
 import { CampaignType, RoleEnum, VoucherType } from "@prisma/client";
 import { fileMiddleware } from "../../middlewares/file.middleware";
-import { getUniqueSuffix } from "../../util";
+import { checkBadWord, getUniqueSuffix } from "../../util";
 import checkRoleMiddleware from "../../middlewares/checkRole.middleware";
 import NotFoundException from "../../exceptions/not-found";
 import { isString } from "lodash";
 import { KGBAuth } from "../../configs/passport";
-import { removeAccent, updateSearchAccent } from "../../util/searchAccent";
+import { removeAccent, updateSearchAccent } from "../../prisma/prisma.service";
 import { autoJoinedProductCampaign } from "./campaign.service";
 
 export default class CampaignController extends BaseController {
@@ -60,7 +60,7 @@ export default class CampaignController extends BaseController {
     const offset = req.gp<number>("offset", 0, Number);
     const orderBy = req.gp<string>("orderBy", "createdAt", String);
     const order = req.gp<string>("direction", "desc", ["asc", "desc"]);
-    const search = req.gp<string>("search", null, String);
+    const search = req.gp<string>("search", null, checkBadWord);
     const type = req.gp<CampaignType>("type", null, CampaignType);
     const where = {};
     if (search) {
@@ -124,8 +124,8 @@ export default class CampaignController extends BaseController {
   };
 
   createCampaign = async (req: KGBRequest, res: KGBResponse) => {
-    const name = req.gp<string>("name", undefined, String);
-    const description = req.gp<string>("description", undefined, String);
+    const name = req.gp<string>("name", undefined, checkBadWord);
+    const description = req.gp<string>("description", undefined, checkBadWord);
     const startAt = new Date(
       req.gp<string | Date>("startAt", undefined, String),
     );
@@ -273,11 +273,11 @@ export default class CampaignController extends BaseController {
     if (!campaign) {
       throw new NotFoundException("campaign", id);
     }
-    const name = req.gp<string>("name", campaign.name, String);
+    const name = req.gp<string>("name", campaign.name, checkBadWord);
     const description = req.gp<string>(
       "description",
       campaign.description,
-      String,
+      checkBadWord,
     );
     const startAt = new Date(
       req.gp<string | Date>("startAt", campaign.startAt, String),

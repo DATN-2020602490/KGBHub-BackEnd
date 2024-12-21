@@ -1,5 +1,5 @@
 import { BaseController } from "../../abstractions/base.controller";
-import { KGBResponse } from "../../global";
+import { KGBResponse } from "../../util/global";
 import { KGBAuth } from "../../configs/passport";
 import { JwtPayload, sign, verify } from "jsonwebtoken";
 import WelcomeEmail from "../../email/templates/welcome";
@@ -8,11 +8,11 @@ import sendEmail from "../../email/process";
 import { render } from "@react-email/render";
 import axios from "axios";
 import HttpException from "../../exceptions/http-exception";
-import { KGBRequest, User } from "../../global";
+import { KGBRequest, User } from "../../util/global";
 import { Platform, RoleEnum } from "@prisma/client";
 import { downloadImage } from "../../configs/multer";
 import { getUniqueSuffix, normalizeEmail } from "../../util";
-import { updateSearchAccent } from "../../util/searchAccent";
+import { updateSearchAccent } from "../../prisma/prisma.service";
 import { handleCloudSaveConversation } from "../chat/chat.service";
 
 export default class AuthController extends BaseController {

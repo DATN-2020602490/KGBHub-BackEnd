@@ -1,6 +1,6 @@
 import { CronJob } from "cron";
-import prisma from "./prisma";
-import { refreshCourse } from "../modules/course/course.service";
+import prisma from "../../prisma";
+import { refreshCourse } from "../../modules/course/course.service";
 
 const RefreshData = new CronJob(
   "0 */5 * * * *",

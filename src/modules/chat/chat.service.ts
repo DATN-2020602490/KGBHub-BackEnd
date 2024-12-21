@@ -1,17 +1,17 @@
 import { ConversationType, ChatMemberRole, MemberStatus } from "@prisma/client";
 import HttpException from "../../exceptions/http-exception";
-import prisma from "../../configs/prisma";
+import prisma from "../../prisma";
 import IO from "../../socket/io";
-import { KGBRemoteSocket, User } from "../../global";
+import { KGBRemoteSocket, User } from "../../util/global";
 import { getUniqueSuffix } from "../../util";
-import { updateSearchAccent } from "../../util/searchAccent";
+import { updateSearchAccent } from "../../prisma/prisma.service";
 
 export const createChat = async (body: any, reqUser: User, io: IO) => {
-  const { userIds } = body;
+  let { userIds } = body;
 
-  validateRequest(userIds, reqUser.id);
+  userIds = validateRequest(userIds, reqUser.id);
 
-  if (userIds.length === 2 && userIds[0] === userIds[1]) {
+  if (userIds.length === 1 && userIds[0] === reqUser.id) {
     return await handleCloudSaveConversation(userIds[0], io);
   }
 
@@ -26,13 +26,19 @@ export const createChat = async (body: any, reqUser: User, io: IO) => {
   throw new HttpException(400, "Invalid conversation type or userIds");
 };
 
-const validateRequest = (userIds: any, reqUserId: string) => {
+const validateRequest = (userIds: any, reqUserId?: string) => {
   if (!userIds || !Array.isArray(userIds)) {
     throw new HttpException(400, "userIds must be an array");
   }
-  if (!userIds.includes(reqUserId)) {
-    throw new HttpException(403, "Missing user id in userIds array");
+  userIds = userIds.filter((id: string) => id !== reqUserId).concat(reqUserId);
+  const data = [] as string[];
+  for (const id of userIds) {
+    if (data.includes(id)) {
+      continue;
+    }
+    data.push(id);
   }
+  return data;
 };
 
 export const handleCloudSaveConversation = async (userId: string, io?: IO) => {
