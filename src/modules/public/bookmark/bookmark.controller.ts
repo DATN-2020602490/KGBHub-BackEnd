@@ -45,7 +45,7 @@ export default class BookmarkController extends BaseController {
         bookmark.lesson.thumbnailFile = thumbnail;
       }
     }
-    return res.status(200).json(bookmarks);
+    return res.status(200).data(bookmarks);
   };
   addBookmark = async (req: KGBRequest, res: KGBResponse) => {
     const reqUser = req.user;
@@ -93,7 +93,7 @@ export default class BookmarkController extends BaseController {
     } else {
       throw new Error("Invalid courseId or lessonId provided");
     }
-    return res.status(200).json(bookmark);
+    return res.status(200).data(bookmark);
   };
   removeBookmark = async (req: KGBRequest, res: KGBResponse) => {
     const reqUser = req.user;
@@ -109,6 +109,6 @@ export default class BookmarkController extends BaseController {
       throw new Error("Unauthorized");
     }
     await this.prisma.bookmark.delete({ where: { id } });
-    return res.status(200).json(bookmark);
+    return res.status(200).data(bookmark);
   };
 }

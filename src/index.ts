@@ -4,6 +4,7 @@ import migrate from "./util/migrate";
 import RefreshData from "./configs/cron/refresh.data";
 import { defaultImage, sleep } from "./util";
 import app from "./app";
+import "./bull";
 
 async function bootstrap() {
   try {

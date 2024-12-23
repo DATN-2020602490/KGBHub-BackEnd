@@ -4,6 +4,8 @@ import {
   File,
   KGBRequest,
   KGBResponse,
+  limitDefault,
+  offsetDefault,
   userSelector,
 } from "../../util/global";
 import { checkRole } from "../auth/auth.service";
@@ -16,6 +18,10 @@ import { isString } from "lodash";
 import { KGBAuth } from "../../configs/passport";
 import { removeAccent, updateSearchAccent } from "../../prisma/prisma.service";
 import { autoJoinedProductCampaign } from "./campaign.service";
+import {
+  removeCampaignJob,
+  scheduleCampaign,
+} from "../../bull/campaign.service";
 
 export default class CampaignController extends BaseController {
   public path = "/api/v1/campaigns";
@@ -25,21 +31,21 @@ export default class CampaignController extends BaseController {
     this.router.get("/:id", KGBAuth(["jwt", "anonymous"]), this.getCampaign);
     this.router.post(
       "/",
-      KGBAuth(["jwt", "anonymous"]),
+      KGBAuth(["jwt"]),
       checkRoleMiddleware([RoleEnum.ADMIN]),
       fileMiddleware([{ name: "cover", maxCount: 1 }]),
       this.createCampaign,
     );
     this.router.patch(
       "/:id",
-      KGBAuth(["jwt", "anonymous"]),
+      KGBAuth(["jwt"]),
       checkRoleMiddleware([RoleEnum.ADMIN]),
       fileMiddleware([{ name: "cover", maxCount: 1 }]),
       this.updateCampaign,
     );
     this.router.delete(
       "/:id",
-      KGBAuth(["jwt", "anonymous"]),
+      KGBAuth(["jwt"]),
       checkRoleMiddleware([RoleEnum.ADMIN]),
       this.deleteCampaign,
     );
@@ -56,8 +62,8 @@ export default class CampaignController extends BaseController {
   }
 
   getCampaigns = async (req: KGBRequest, res: KGBResponse) => {
-    const limit = req.gp<number>("limit", 12, Number);
-    const offset = req.gp<number>("offset", 0, Number);
+    const limit = req.gp<number>("limit", limitDefault, Number);
+    const offset = req.gp<number>("offset", offsetDefault, Number);
     const orderBy = req.gp<string>("orderBy", "createdAt", String);
     const order = req.gp<string>("direction", "desc", ["asc", "desc"]);
     const search = req.gp<string>("search", null, checkBadWord);
@@ -84,11 +90,16 @@ export default class CampaignController extends BaseController {
       }
     }
     if (!req.user || !checkRole(req.user, [RoleEnum.ADMIN])) {
+      const total = campaigns.filter((_) => _.active).length;
       return res
         .status(200)
-        .json(campaigns.filter((_) => _.active).slice(offset, offset + limit));
+        .data(
+          campaigns.filter((_) => _.active).slice(offset, offset + limit),
+          total,
+        );
     }
-    return res.status(200).json(campaigns.slice(offset, offset + limit));
+    const total = campaigns.length;
+    return res.status(200).data(campaigns.slice(offset, offset + limit), total);
   };
 
   getCampaign = async (req: KGBRequest, res: KGBResponse) => {
@@ -105,7 +116,7 @@ export default class CampaignController extends BaseController {
       },
     });
     if (!campaign) {
-      return res.status(404).json({ message: "Campaign not found" });
+      return res.status(404).data({ message: "Campaign not found" });
     }
     if (req.user) {
       const campaignUser = await this.prisma.campaignUser.findFirst({
@@ -117,10 +128,10 @@ export default class CampaignController extends BaseController {
     }
     if (!req.user || !checkRole(req.user, [RoleEnum.ADMIN])) {
       if (!campaign.active) {
-        return res.status(404).json({ message: "Campaign not found" });
+        return res.status(404).data({ message: "Campaign not found" });
       }
     }
-    return res.status(200).json(campaign);
+    return res.status(200).data(campaign);
   };
 
   createCampaign = async (req: KGBRequest, res: KGBResponse) => {
@@ -160,7 +171,8 @@ export default class CampaignController extends BaseController {
         type,
       },
     });
-    res.status(201).json(campaign);
+    res.status(201).data(campaign);
+    await scheduleCampaign({ id: campaign.id });
     await updateSearchAccent("campaign", campaign.id);
     if (type === CampaignType.VOUCHERS) {
       const totalFeeVoucher = req.gp<number>("totalFeeVoucher", 0, Number);
@@ -309,8 +321,18 @@ export default class CampaignController extends BaseController {
         coverFileId: cover.id,
       },
     });
+    res.status(200).data(_);
+    if (endAt > campaign.endAt && !campaign.active) {
+      await this.prisma.campaign.update({
+        where: {
+          id,
+        },
+        data: { active: true },
+      });
+    }
     await updateSearchAccent("campaign", _.id);
-    return res.status(200).json(_);
+    await removeCampaignJob({ id: _.id });
+    await scheduleCampaign({ id: _.id });
   };
 
   deleteCampaign = async (req: KGBRequest, res: KGBResponse) => {
@@ -319,8 +341,14 @@ export default class CampaignController extends BaseController {
     if (!campaign) {
       throw new NotFoundException("campaign", id);
     }
+    await this.prisma.campaignUser.deleteMany({ where: { campaignId: id } });
+    await this.prisma.voucher.deleteMany({ where: { campaignId: id } });
+    await this.prisma.campaignDiscount.deleteMany({
+      where: { campaignId: id },
+    });
     await this.prisma.campaign.delete({ where: { id } });
-    return res.status(204).json();
+    res.status(200).data(campaign);
+    await removeCampaignJob({ id: campaign.id });
   };
 
   joinCampaign = async (req: KGBRequest, res: KGBResponse) => {
@@ -335,21 +363,21 @@ export default class CampaignController extends BaseController {
       throw new NotFoundException("campaign", campaignId);
     }
     if (campaign.startAt > new Date() || campaign.endAt < new Date()) {
-      return res.status(404).json({ message: "Campaign not active" });
+      return res.status(404).data({ message: "Campaign not active" });
     }
     const user = req.user;
     const campaignUser = await this.prisma.campaignUser.findFirst({
       where: { campaignId, userId: user.id },
     });
     if (campaignUser) {
-      return res.status(200).json(campaignUser);
+      return res.status(200).data(campaignUser);
     }
     if (campaign.type === CampaignType.VOUCHERS) {
       if (campaign.totalVoucher === 0) {
-        return res.status(404).json({ message: "No voucher left" });
+        return res.status(404).data({ message: "No voucher left" });
       }
       if (campaign.campaignUsers.length >= campaign.totalVoucher) {
-        return res.status(404).json({ message: "No voucher left" });
+        return res.status(404).data({ message: "No voucher left" });
       }
       const randomVoucherType =
         Math.random() > 0.5
@@ -371,7 +399,7 @@ export default class CampaignController extends BaseController {
         });
       }
       if (!remainingVoucher) {
-        return res.status(404).json({ message: "No voucher left" });
+        return res.status(404).data({ message: "No voucher left" });
       }
       const _ = await this.prisma.campaignUser.create({
         data: {
@@ -380,7 +408,7 @@ export default class CampaignController extends BaseController {
           vouchers: { connect: { id: remainingVoucher.id } },
         },
       });
-      res.status(200).json(_);
+      res.status(200).data(_);
       await this.prisma.campaign.update({
         where: { id: campaignId },
         data: {
@@ -394,7 +422,7 @@ export default class CampaignController extends BaseController {
           userId: user.id,
         },
       });
-      res.status(200).json(campaignUser);
+      res.status(200).data(campaignUser);
       await this.prisma.campaign.update({
         where: { id: campaignId },
         data: {
@@ -409,7 +437,14 @@ export default class CampaignController extends BaseController {
     const user = req.user;
 
     const campaignUsers = (await this.prisma.campaignUser.findMany({
-      where: { userId: user.id },
+      where: {
+        userId: user.id,
+        campaign: {
+          startAt: { lte: new Date() },
+          endAt: { gte: new Date() },
+          active: true,
+        },
+      },
       include: {
         campaign: {
           include: {
@@ -430,6 +465,6 @@ export default class CampaignController extends BaseController {
       },
       orderBy: { createdAt: "desc" },
     })) as CampaignUser[];
-    return res.status(200).json(campaignUsers);
+    return res.status(200).data(campaignUsers);
   };
 }

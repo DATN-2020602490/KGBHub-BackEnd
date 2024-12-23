@@ -6,10 +6,11 @@ import {
   Message,
   KGBSocket,
   User,
-  Conversation,
   ConversationWithLastMessage,
   KGBRemoteSocket,
   userSelector,
+  limitDefault,
+  offsetDefault,
 } from "../util/global";
 import { CourseStatus, MemberStatus, UserView } from "@prisma/client";
 import prisma from "../prisma";
@@ -192,9 +193,11 @@ class IO {
   public chatList = async (
     userId: string,
   ): Promise<ConversationWithLastMessage[]> => {
-    const chats = (await this.prisma.conversation.findMany({
+    let chats = await this.prisma.conversation.findMany({
       where: {
-        chatMembers: { some: { userId } },
+        chatMembers: {
+          some: { userId, status: MemberStatus.ACTIVE },
+        },
       },
       include: {
         chatMembers: {
@@ -203,32 +206,25 @@ class IO {
           },
         },
       },
-    })) as Conversation[];
-    const _ = [] as ConversationWithLastMessage[];
-    for (const chat of chats) {
-      if (chat.courseId) {
-        if (
-          !(await this.prisma.course.findFirst({
+    });
+    chats = await Promise.all(
+      chats.filter(async (chat) => {
+        if (chat.courseId) {
+          const course = await this.prisma.course.findFirst({
             where: { id: chat.courseId, status: CourseStatus.APPROVED },
-          }))
-        ) {
-          continue;
+          });
+          if (!course) {
+            return false;
+          }
         }
-      }
-      if (
-        chat.chatMembers.find(
-          (_) => _.userId === userId && _.status === MemberStatus.PENDING,
-        )
-      ) {
-        _.push({
-          conversation: { ...chat, unreadMessages: 0 },
-          lastMessage: null,
-        });
-        continue;
-      }
+        return true;
+      }),
+    );
+    const _ = [] as any[];
+    for (const chat of chats) {
       const unreadMessages = await this.prisma.chatMembersOnMessages.count({
         where: {
-          chatMember: { conversationId: chat.id, userId: userId },
+          chatMember: { conversationId: chat.id, userId },
           read: false,
         },
       });
@@ -296,8 +292,8 @@ class IO {
             socket.emit("getChat", { error: "Access denied" });
             return;
           }
-          const limit = parseInt(String(data.limit)) || 10;
-          const offset = parseInt(String(data.offset)) || 0;
+          const limit = parseInt(String(data.limit)) || limitDefault;
+          const offset = parseInt(String(data.offset)) || offsetDefault;
           const reqUser = socket.user as User;
           if (!data.id) {
             throw new Error("Invalid id");

@@ -76,7 +76,7 @@ export default class ReportMockController extends BaseController {
       return acc;
     }, {} as Record<string, any>);
 
-    return res.status(200).json({
+    return res.status(200).data({
       groupBy,
       startDate,
       endDate,
@@ -107,7 +107,7 @@ export default class ReportMockController extends BaseController {
       return acc;
     }, {} as Record<string, any>);
 
-    return res.status(200).json({
+    return res.status(200).data({
       groupBy,
       startDate,
       endDate,

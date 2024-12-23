@@ -39,7 +39,7 @@ const errorHandler = (
   if (res) {
     res
       .status(res.statusCode === 200 ? 400 : res.statusCode)
-      .json({ error: response });
+      .data({ error: response });
   }
   console.error(error);
 };

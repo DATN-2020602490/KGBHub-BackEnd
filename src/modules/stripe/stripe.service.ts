@@ -1,6 +1,5 @@
 import {
   OrderStatus,
-  Order,
   ProductType,
   Currency,
   PaymentPlatform,
@@ -12,9 +11,12 @@ import prisma from "../../prisma";
 import stripe from "../../configs/stripe";
 import BigNumber from "bignumber.js";
 import { toLower } from "lodash";
-import { userSelector, Voucher } from "../../util/global";
+import { Order, userSelector, Voucher } from "../../util/global";
 import IO from "../../socket/io";
 import { findX } from "../report/report.service";
+import PaymentSuccessEmail from "../../email/templates/order.paid";
+import { render } from "@react-email/render";
+import sendEmail from "../../email/process";
 
 export const onStripeHook = async (event: any, io: IO) => {
   const STATUS_MAP = {
@@ -60,7 +62,7 @@ export const onStripeHook = async (event: any, io: IO) => {
   });
 
   if (order.status !== OrderStatus.SUCCESS && status === OrderStatus.SUCCESS) {
-    onOrderPaid(order, io);
+    onOrderPaid(order as Order, io);
   }
 };
 
@@ -121,6 +123,23 @@ export const onOrderPaid = async (order: Order, io: IO) => {
         }
       }
     }
+    const user = await prisma.user.findUnique({
+      where: { id: order.userId },
+    });
+    const orderX = (await prisma.order.findFirst({
+      where: {
+        id: order.id,
+      },
+      include: { productOrders: { include: { product: true } } },
+    })) as Order;
+    const html = render(
+      PaymentSuccessEmail({
+        userFirstName: user?.firstName,
+        userLastName: user?.lastName,
+        order: orderX,
+      }),
+    );
+    await sendEmail(html, user?.email as string, "Payment Success");
   } catch (error) {
     console.error("onOrderPaid error:", error);
   }
@@ -165,7 +184,7 @@ export const updateOrderStatus = async (io: IO) => {
       order.status !== OrderStatus.SUCCESS &&
       status === OrderStatus.SUCCESS
     ) {
-      onOrderPaid(order, io);
+      onOrderPaid(order as Order, io);
     }
   }
 };
@@ -320,7 +339,9 @@ export const createLineItems = async (
   const line_items = [] as { price: string; quantity: number }[];
   let voucher: Voucher = null;
   if (code) {
-    voucher = await prisma.voucher.findFirst({ where: { code } });
+    voucher = await prisma.voucher.findFirst({
+      where: { code, campaign: { active: true } },
+    });
   }
   for (const courseId of courseIds) {
     const course = await prisma.course.findUnique({
@@ -341,6 +362,16 @@ export const createLineItems = async (
       courseIds.splice(courseIds.indexOf(courseId), 1);
     }
   }
+  if (!courseIds.length) {
+    return {
+      line_items: [],
+      platformFee: null,
+      tip: null,
+      totalAmount: 0,
+      originalAmount: 0,
+      originalFee: 0,
+    };
+  }
   const discountProduct = voucher
     ? voucher.type === VoucherType.PRODUCT_PERCENTAGE
     : false;
@@ -355,22 +386,18 @@ export const createLineItems = async (
       continue;
     }
     const campaignDiscount = await prisma.campaignDiscount.findFirst({
-      where: { courseId },
+      where: { courseId, campaign: { active: true } },
       include: { campaign: true },
+      orderBy: { value: "desc" },
     });
     let isDiscountFromCampaign = false;
     if (campaignDiscount) {
       if (
-        campaignDiscount.campaign.startAt > new Date() ||
-        campaignDiscount.campaign.endAt < new Date()
+        await prisma.campaignUser.findFirst({
+          where: { campaignId: campaignDiscount.campaignId, userId },
+        })
       ) {
-        if (
-          await prisma.campaignUser.findFirst({
-            where: { campaignId: campaignDiscount.campaignId, userId },
-          })
-        ) {
-          isDiscountFromCampaign = true;
-        }
+        isDiscountFromCampaign = true;
       }
     }
     const product = course.products[0];
@@ -440,7 +467,11 @@ export const notPaidCourses = async (userId: string, courseIds: string[]) => {
       continue;
     }
     const isBought = await prisma.coursesPaid.findFirst({
-      where: { courseId, userId, order: { status: OrderStatus.SUCCESS } },
+      where: {
+        courseId,
+        userId,
+        OR: [{ isFree: true }, { order: { status: OrderStatus.SUCCESS } }],
+      },
     });
     if (isBought) {
       continue;

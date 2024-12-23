@@ -1,5 +1,11 @@
 import { BaseController } from "../../abstractions/base.controller";
-import { Course, KGBResponse, userSelector } from "../../util/global";
+import {
+  Course,
+  KGBResponse,
+  limitDefault,
+  offsetDefault,
+  userSelector,
+} from "../../util/global";
 import { KGBAuth } from "../../configs/passport";
 import HttpException from "../../exceptions/http-exception";
 import NotFoundException from "../../exceptions/not-found";
@@ -14,14 +20,16 @@ import { File, KGBRequest } from "../../util/global";
 import { fileMiddleware } from "../../middlewares/file.middleware";
 import { removeAccent, updateSearchAccent } from "../../prisma/prisma.service";
 import { checkBadWord } from "../../util";
+import QUOTES from "../../configs/quotes.json";
 
 export default class UserController extends BaseController {
   public path = "/api/v1/users";
 
   public initializeRoutes() {
+    this.router.get(`/random-quote`, this.getRandomQuote);
     this.router.get(`/new-user`, KGBAuth("jwt"), this.newUser);
-    this.router.get(this.path, KGBAuth("jwt"), this.getUsers);
-    this.router.post(this.path, KGBAuth("jwt"), this.addUser);
+    this.router.get(`/`, KGBAuth("jwt"), this.getUsers);
+    this.router.post(`/`, KGBAuth("jwt"), this.addUser);
     this.router.patch(
       `/:id`,
       KGBAuth("jwt"),
@@ -56,10 +64,8 @@ export default class UserController extends BaseController {
 
   getUsers = async (req: KGBRequest, res: KGBResponse) => {
     const userRoles = req.user.roles;
-    let limit = req.query.limit || 12;
-    limit = +limit;
-    let offset = req.query.offset || 0;
-    offset = +offset;
+    const limit = req.gp<number>("limit", limitDefault, Number);
+    const offset = req.gp<number>("offset", offsetDefault, Number);
     const query = {
       skip: offset,
       take: limit,
@@ -75,14 +81,14 @@ export default class UserController extends BaseController {
       if (userRole.role.name === RoleEnum.ADMIN) {
         const total = await this.prisma.user.count();
         const users = await this.prisma.user.findMany(query);
-        return res.status(200).send({ users, total, page: offset / limit + 1 });
+        return res.status(200).data(users, total);
       }
     }
     throw new HttpException(401, "Unauthorized");
   };
 
   addUser = async (req: KGBRequest, res: KGBResponse) => {
-    return res.success({});
+    return res.data({});
   };
 
   updateUser = async (req: KGBRequest, res: KGBResponse) => {
@@ -143,7 +149,7 @@ export default class UserController extends BaseController {
       data,
     });
     await updateSearchAccent("user", id);
-    return res.status(200).send(updateUser);
+    return res.status(200).data(updateUser);
   };
 
   deleteUser = async (req: KGBRequest, res: KGBResponse) => {
@@ -165,7 +171,7 @@ export default class UserController extends BaseController {
         where: { id: id },
       });
     }
-    return res.status(200).send(user);
+    return res.status(200).data(user);
   };
 
   getUserDetail = async (req: KGBRequest, res: KGBResponse) => {
@@ -178,7 +184,7 @@ export default class UserController extends BaseController {
       throw new NotFoundException("user", id);
     }
     delete user.refreshToken;
-    return res.status(200).send(user);
+    return res.status(200).data(user);
   };
   getProfile = async (req: KGBRequest, res: KGBResponse) => {
     const user = await this.prisma.user.findFirst({
@@ -199,7 +205,7 @@ export default class UserController extends BaseController {
     delete user.refreshToken;
     delete user.firstTime;
     delete user.roles;
-    res.status(200).json(user);
+    res.status(200).data(user);
   };
 
   newUser = async (req: KGBRequest, res: KGBResponse) => {
@@ -211,7 +217,7 @@ export default class UserController extends BaseController {
     const newUser = await this.prisma.user.findFirst({
       where: { id: user.id },
     });
-    return res.status(200).send(newUser);
+    return res.status(200).data(newUser);
   };
 
   authorVerify = async (req: KGBRequest, res: KGBResponse) => {
@@ -292,7 +298,7 @@ export default class UserController extends BaseController {
         category,
       },
     });
-    return res.status(200).json(submitForm);
+    return res.status(200).data(submitForm);
   };
   getHearted = async (req: KGBRequest, res: KGBResponse) => {
     const reqUser = req.user;
@@ -309,11 +315,12 @@ export default class UserController extends BaseController {
       where: { userId: reqUser.id, courseId: { not: null } },
       include: { course: true },
     });
-    return res.status(200).json({ lessonHearted, courseHearted });
+    return res.status(200).data({ lessonHearted, courseHearted });
   };
+
   getBought = async (req: KGBRequest, res: KGBResponse) => {
-    const limit = Number(req.query.limit) || 12;
-    const offset = Number(req.query.offset) || 0;
+    const limit = req.gp<number>("limit", limitDefault, Number);
+    const offset = req.gp<number>("offset", offsetDefault, Number);
     const orderBy = (req.query.orderBy as string) || "createdAt";
     const direction = (req.query.direction as "asc" | "desc") || "desc";
     const courses = (await this.prisma.course.findMany({
@@ -324,6 +331,8 @@ export default class UserController extends BaseController {
         isPublic: true,
         status: CourseStatus.APPROVED,
       },
+      take: limit,
+      skip: offset,
       orderBy: [
         {
           [orderBy]: direction,
@@ -372,7 +381,10 @@ export default class UserController extends BaseController {
             where: {
               userId: req.user.id,
               courseId: course.id,
-              order: { status: OrderStatus.SUCCESS },
+              OR: [
+                { isFree: true },
+                { order: { status: OrderStatus.SUCCESS } },
+              ],
             },
           }),
           this.prisma.lessonDone.findMany({
@@ -404,17 +416,12 @@ export default class UserController extends BaseController {
         course["myRating"] = rating;
       }
     }
-    return res.status(200).json({
-      courses,
-      total,
-      page: offset / limit + 1,
-      limit,
-    });
+    return res.status(200).data(courses, total);
   };
   getRated = async (req: KGBRequest, res: KGBResponse) => {
     const reqUser = req.user;
-    const limit = req.gp<number>("limit", 12, Number);
-    const offset = req.gp<number>("offset", 0, Number);
+    const limit = req.gp<number>("limit", limitDefault, Number);
+    const offset = req.gp<number>("offset", offsetDefault, Number);
     const courseId = req.gp<string>("courseId", null, String);
     if (courseId) {
       const rated = await this.prisma.rating.findFirst({
@@ -423,7 +430,7 @@ export default class UserController extends BaseController {
           course: true,
         },
       });
-      return res.status(200).json(rated);
+      return res.status(200).data(rated);
     }
     const rated = await this.prisma.rating.findMany({
       where: { userId: reqUser.id },
@@ -433,7 +440,10 @@ export default class UserController extends BaseController {
         course: true,
       },
     });
-    return res.status(200).json(rated);
+    const total = await this.prisma.rating.count({
+      where: { userId: reqUser.id },
+    });
+    return res.status(200).data(rated, total);
   };
   getProgress = async (req: KGBRequest, res: KGBResponse) => {
     const reqUser = req.user;
@@ -454,14 +464,14 @@ export default class UserController extends BaseController {
         lessons: lessons.filter((lesson) => lesson.lesson.part.courseId === id),
       });
     }
-    return res.status(200).json(_);
+    return res.status(200).data(_);
   };
   getMyForms = async (req: KGBRequest, res: KGBResponse) => {
     const reqUser = req.user;
     const forms = await this.prisma.submitForm.findMany({
       where: { userId: reqUser.id },
     });
-    return res.status(200).json(forms);
+    return res.status(200).data(forms);
   };
   updateMyForm = async (req: KGBRequest, res: KGBResponse) => {
     const myForm = await this.prisma.submitForm.findFirst({
@@ -504,13 +514,13 @@ export default class UserController extends BaseController {
         status: FormStatus.PENDING,
       },
     });
-    return res.status(200).json(submitForm);
+    return res.status(200).data(submitForm);
   };
 
   searchAuthor = async (req: KGBRequest, res: KGBResponse) => {
     const search = req.gp<string>("search", null, checkBadWord);
-    const limit = req.gp<number>("limit", 12, Number);
-    const offset = req.gp<number>("offset", 0, Number);
+    const limit = req.gp<number>("limit", limitDefault, Number);
+    const offset = req.gp<number>("offset", offsetDefault, Number);
     const where = {
       roles: { some: { role: { name: RoleEnum.AUTHOR } } },
     };
@@ -523,13 +533,16 @@ export default class UserController extends BaseController {
       take: limit,
       skip: offset,
     });
-    return res.status(200).json(users);
+    const total = await this.prisma.user.count({
+      where,
+    });
+    return res.status(200).data(users, total);
   };
 
   searchUser = async (req: KGBRequest, res: KGBResponse) => {
     const search = req.gp<string>("search", null, checkBadWord);
-    const limit = req.gp<number>("limit", 12, Number);
-    const offset = req.gp<number>("offset", 0, Number);
+    const limit = req.gp<number>("limit", limitDefault, Number);
+    const offset = req.gp<number>("offset", offsetDefault, Number);
     const where = {};
     if (search) {
       where["searchAccent"] = { contains: removeAccent(search) };
@@ -540,6 +553,18 @@ export default class UserController extends BaseController {
       take: limit,
       skip: offset,
     });
-    return res.status(200).json(users);
+    const total = await this.prisma.user.count({
+      where,
+    });
+    return res.status(200).data(users, total);
+  };
+
+  getRandomQuote = async (_, res: KGBResponse) => {
+    const quoteLength = QUOTES.length;
+    let randomIndex = Math.floor(Math.random() * quoteLength);
+    while (QUOTES[randomIndex].quote.length > 100) {
+      randomIndex = Math.floor(Math.random() * quoteLength);
+    }
+    res.status(200).data(QUOTES[randomIndex]);
   };
 }

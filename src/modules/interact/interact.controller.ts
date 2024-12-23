@@ -1,5 +1,10 @@
 import { BaseController } from "../../abstractions/base.controller";
-import { KGBResponse, userSelector } from "../../util/global";
+import {
+  KGBResponse,
+  limitDefault,
+  offsetDefault,
+  userSelector,
+} from "../../util/global";
 import { KGBAuth } from "../../configs/passport";
 import NotFoundException from "../../exceptions/not-found";
 import HttpException from "../../exceptions/http-exception";
@@ -35,8 +40,8 @@ export default class InteractController extends BaseController {
   }
 
   getRates = async (req: KGBRequest, res: KGBResponse) => {
-    const limit = req.gp<number>("limit", 12, Number);
-    const offset = req.gp<number>("offset", 0, Number);
+    const limit = req.gp<number>("limit", limitDefault, Number);
+    const offset = req.gp<number>("offset", offsetDefault, Number);
     const courseId = req.gp<string>("courseId", undefined, String);
     if (!courseId) {
       throw new HttpException(400, "courseId is missing");
@@ -69,12 +74,9 @@ export default class InteractController extends BaseController {
     for (const rate of _rates) {
       general[rate.star] += 1;
     }
-    return res.status(200).json({
-      rates,
-      avgRate: course.avgRating,
-      general,
-      totalRated: _rates.length,
-    });
+    return res
+      .status(200)
+      .data(rates, _rates.length, { avgRate: course.avgRating, general });
   };
 
   rateAction = async (req: KGBRequest, res: KGBResponse) => {
@@ -141,7 +143,7 @@ export default class InteractController extends BaseController {
     const _ = await this.prisma.rating.findFirst({
       where: { userId: reqUser.id, courseId },
     });
-    return res.status(200).json(_);
+    return res.status(200).data(_);
   };
 
   getUserInteractions = async (req: KGBRequest, res: KGBResponse) => {
@@ -168,13 +170,13 @@ export default class InteractController extends BaseController {
     ]);
 
     const result = { hearts, comments };
-    res.json(result);
+    res.data(result);
   };
 
   getInteracts = async (req: KGBRequest, res: KGBResponse) => {
     const id = req.gp<string>("id", undefined, String);
-    const limit = req.gp<number>("limit", 12, Number);
-    const offset = req.gp<number>("offset", 0, Number);
+    const limit = req.gp<number>("limit", limitDefault, Number);
+    const offset = req.gp<number>("offset", offsetDefault, Number);
     const targetResource = req.gp<string>("target_resource", undefined, String);
     if (!targetResource) {
       throw new HttpException(400, "Missing target resource");
@@ -225,9 +227,7 @@ export default class InteractController extends BaseController {
       });
       const ratingCount = ratings.length;
       ratings = ratings.slice(offset, offset + limit);
-      return res.status(200).json({
-        comments,
-        commentsCount,
+      return res.status(200).data(comments, commentsCount, {
         isHearted,
         hearsCount,
         ratings,
@@ -237,7 +237,7 @@ export default class InteractController extends BaseController {
 
     return res
       .status(200)
-      .json({ comments, commentsCount, isHearted, hearsCount });
+      .data(comments, commentsCount, { isHearted, hearsCount });
   };
 
   heartAction = async (req: KGBRequest, res: KGBResponse) => {
@@ -268,7 +268,7 @@ export default class InteractController extends BaseController {
           id: heart.id,
         },
       });
-      return res.status(200).json(heart);
+      return res.status(200).data(heart);
     }
 
     const newHeart = await this.prisma.heart.create({
@@ -278,7 +278,7 @@ export default class InteractController extends BaseController {
       },
     });
 
-    return res.status(200).json(newHeart);
+    return res.status(200).data(newHeart);
   };
 
   createCommentAction = async (req: KGBRequest, res: KGBResponse) => {
@@ -341,7 +341,7 @@ export default class InteractController extends BaseController {
       throw new HttpException(400, "Invalid level");
     }
 
-    return res.status(200).json(comment);
+    return res.status(200).data(comment);
   };
 
   updateCommentAction = async (req: KGBRequest, res: KGBResponse) => {
@@ -365,7 +365,7 @@ export default class InteractController extends BaseController {
     await updateSearchAccent("comment", id);
     const newComment = await this.prisma.comment.findFirst({ where: { id } });
 
-    return res.status(200).json(newComment);
+    return res.status(200).data(newComment);
   };
 
   deleteCommentAction = async (req: KGBRequest, res: KGBResponse) => {
@@ -410,6 +410,6 @@ export default class InteractController extends BaseController {
       });
     }
 
-    return res.status(200).json(comment);
+    return res.status(200).data(comment);
   };
 }

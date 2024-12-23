@@ -35,12 +35,12 @@ export default class FormController extends BaseController {
 
   getForms = async (req: KGBRequest, res: KGBResponse) => {
     const forms = await this.prisma.submitForm.findMany();
-    return res.status(200).json(forms);
+    return res.status(200).data(forms);
   };
   getForm = async (req: KGBRequest, res: KGBResponse) => {
     const id = req.gp<string>("id", undefined, String);
     const form = await this.prisma.submitForm.findFirst({ where: { id } });
-    return res.status(200).json(form);
+    return res.status(200).data(form);
   };
   updateForm = async (req: KGBRequest, res: KGBResponse) => {
     const reqUser = req.user;
@@ -70,7 +70,7 @@ export default class FormController extends BaseController {
       }
       const emailHtml = render(
         AcceptForm({
-          userFirstName: reqUser.email.split("@")[0],
+          userFirstName: form.user.firstName,
         }),
       );
       await sendEmail(
@@ -97,7 +97,7 @@ export default class FormController extends BaseController {
       }
       const emailHtml = render(
         RejectForm({
-          userFirstName: reqUser.email.split("@")[0],
+          userFirstName: form.user.firstName,
         }),
       );
       await sendEmail(
@@ -106,6 +106,6 @@ export default class FormController extends BaseController {
         "Your form has been rejected",
       );
     }
-    return res.status(200).json(form);
+    return res.status(200).data(form);
   };
 }

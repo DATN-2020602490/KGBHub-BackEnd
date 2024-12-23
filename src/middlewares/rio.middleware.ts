@@ -1,26 +1,13 @@
 import { NextFunction } from "express";
-import { KGBRequest, KGBResponse } from "../util/global";
+import {
+  KGBRequest,
+  KGBResponse,
+  limitDefault,
+  offsetDefault,
+  ResponseData,
+} from "../util/global";
 import { checkCondition, normalizeEmail } from "../util";
-
-const genNextUrl = (data: any, req: KGBRequest) => {
-  if (!Array.isArray(data)) {
-    return "";
-  }
-
-  const limit = req.gp<number>("limit", 12, Number);
-  const offset = req.gp<number>("offset", 0, Number) + limit;
-  const query = { ...req.query };
-
-  if (data.length < limit) {
-    return "";
-  }
-
-  query.offset = String(offset);
-
-  return `${req.originalUrl.split("?")[0]}?${Object.keys(query)
-    .map((k) => `${k}=${query[k]}`)
-    .join("&")}`;
-};
+import { isArray } from "lodash";
 
 export default (req: KGBRequest, res: KGBResponse, next: NextFunction) => {
   if (req.body.email) {
@@ -32,6 +19,55 @@ export default (req: KGBRequest, res: KGBResponse, next: NextFunction) => {
   if (req.params.email) {
     req.params.email = normalizeEmail(req.params.email as string);
   }
+
+  req.genNextUrl = (data: any[]) => {
+    if (!isArray(data)) {
+      return "";
+    }
+    const limit = req.gp<number>("limit", limitDefault, Number);
+    const offset = req.gp<number>("offset", offsetDefault, Number) + limit;
+    const query = { ...req.query };
+
+    if (data.length < limit) {
+      return "";
+    }
+
+    query.offset = String(offset);
+
+    return `${req.originalUrl.split("?")[0]}?${Object.keys(query)
+      .map((k) => `${k}=${query[k]}`)
+      .join("&")}`;
+  };
+
+  res.createResponse = (
+    data: any,
+    total?: number,
+    option?: any,
+  ): ResponseData => {
+    if (option) {
+      console.log("ROUTER: ", req.originalUrl);
+      console.log(option);
+    }
+    if (isArray(data) && total) {
+      const limit = req.gp<number>("limit", limitDefault, Number);
+      const offset = req.gp<number>("offset", offsetDefault, Number);
+      return {
+        data,
+        option,
+        pagination: {
+          page: offset / limit + 1,
+          totalPages: Math.ceil(total / limit),
+          total,
+          next: req.genNextUrl(data),
+        },
+      };
+    }
+    return {
+      data,
+      option,
+    };
+  };
+
   req.gp = (key: string, defaultValue: any, validate: any) => {
     let value = [
       req.body[key],
@@ -73,27 +109,8 @@ export default (req: KGBRequest, res: KGBResponse, next: NextFunction) => {
     return value;
   };
 
-  res.success = (data: any, option: any) => {
-    const response: any = {};
-
-    if (!option) {
-      option = {};
-    }
-
-    if (option.meta) {
-      response.meta = option.meta;
-    }
-
-    if (data !== undefined) {
-      response.data = data;
-    }
-
-    if (req.gp<number>("limit", null)) {
-      response.meta = response.meta || {};
-      response.meta.next = genNextUrl(data, req);
-    }
-
-    return res.status(option.code || 200).json(response);
+  res.data = (data: any, total?: number, option?: any) => {
+    return res.json(res.createResponse(data, total, option));
   };
 
   res.error = (error: string | Error) => {

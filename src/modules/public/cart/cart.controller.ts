@@ -43,7 +43,14 @@ export default class CartController extends BaseController {
       where: {
         courseId,
         userId: reqUser.id,
-        order: { status: OrderStatus.SUCCESS },
+        OR: [
+          {
+            isFree: true,
+          },
+          {
+            order: { status: OrderStatus.SUCCESS },
+          },
+        ],
       },
       include: { order: true },
     });
@@ -60,7 +67,7 @@ export default class CartController extends BaseController {
       where: { id: cart.id },
       include: { coursesOnCarts: { include: { course: true } } },
     });
-    return res.status(200).json(_);
+    return res.status(200).data(_);
   };
   removeFromCart = async (req: KGBRequest, res: KGBResponse) => {
     const reqUser = req.user;
@@ -100,7 +107,7 @@ export default class CartController extends BaseController {
       where: { id: cart.id },
       include: { coursesOnCarts: { include: { course: true } } },
     });
-    return res.status(200).json(_);
+    return res.status(200).data(_);
   };
   clearCart = async (req: KGBRequest, res: KGBResponse) => {
     const reqUser = req.user;
@@ -117,7 +124,7 @@ export default class CartController extends BaseController {
       where: { id: cart.id },
       include: { coursesOnCarts: { include: { course: true } } },
     });
-    return res.status(200).json(_);
+    return res.status(200).data(_);
   };
   getCart = async (req: KGBRequest, res: KGBResponse) => {
     const reqUser = req.user;
@@ -128,6 +135,6 @@ export default class CartController extends BaseController {
     if (!cart) {
       throw new NotFoundException("cart", reqUser.id);
     }
-    return res.status(200).json(cart);
+    return res.status(200).data(cart);
   };
 }

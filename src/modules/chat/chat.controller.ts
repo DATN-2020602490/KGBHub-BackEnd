@@ -1,5 +1,11 @@
 import { BaseController } from "../../abstractions/base.controller";
-import { File, KGBResponse, userSelector } from "../../util/global";
+import {
+  File,
+  KGBResponse,
+  limitDefault,
+  offsetDefault,
+  userSelector,
+} from "../../util/global";
 import { Attachment, Message, KGBRequest } from "../../util/global";
 import NotFoundException from "../../exceptions/not-found";
 import HttpException from "../../exceptions/http-exception";
@@ -67,13 +73,13 @@ export default class ChatController extends BaseController {
         targetMessage: true,
       },
     });
-    return res.status(200).json(message);
+    return res.status(200).data(message);
   };
   sharedFiles = async (req: KGBRequest, res: KGBResponse) => {
     const reqUser = req.user;
     const conversationId = req.gp<string>("conversationId", undefined, String);
-    const limit = parseInt(req.query.limit as string) || 10;
-    const offset = parseInt(req.query.offset as string) || 0;
+    const limit = req.gp<number>("limit", limitDefault, Number);
+    const offset = req.gp<number>("offset", offsetDefault, Number);
     const attachments = (
       (await this.prisma.attachment.findMany({
         where: {
@@ -84,20 +90,31 @@ export default class ChatController extends BaseController {
         skip: offset,
       })) as Attachment[]
     ).filter((_) => _.messageId);
-    return res.status(200).json(attachments);
+    const total = (
+      await this.prisma.attachment.findMany({
+        where: {
+          conversationId,
+          conversation: { chatMembers: { some: { userId: reqUser.id } } },
+        },
+      })
+    ).filter((_) => _.messageId);
+    return res.status(200).data(attachments, total.length);
   };
 
   myFiles = async (req: KGBRequest, res: KGBResponse) => {
     const reqUser = req.user;
     const conversationId = req.gp<string>("conversationId", undefined, String);
-    const limit = parseInt(req.query.limit as string) || 10;
-    const offset = parseInt(req.query.offset as string) || 0;
+    const limit = req.gp<number>("limit", limitDefault, Number);
+    const offset = req.gp<number>("offset", offsetDefault, Number);
     const attachments = await this.prisma.attachment.findMany({
       where: { userId: reqUser.id, conversationId },
       take: limit,
       skip: offset,
     });
-    return res.status(200).json(attachments);
+    const total = await this.prisma.attachment.findMany({
+      where: { userId: reqUser.id, conversationId },
+    });
+    return res.status(200).data(attachments, total.length);
   };
   toggleMute = async (req: KGBRequest, res: KGBResponse) => {
     const reqUser = req.user;
@@ -122,7 +139,7 @@ export default class ChatController extends BaseController {
       data: { isMute: !chatMember.isMute },
     });
     chatMember.isMute = !chatMember.isMute;
-    res.status(200).json(chatMember);
+    res.status(200).data(chatMember);
     const chatMembers = await this.prisma.chatMember.findMany({
       where: { conversationId, status: MemberStatus.ACTIVE },
     });
@@ -196,7 +213,7 @@ export default class ChatController extends BaseController {
       });
       result.push(c);
     }
-    res.status(200).json(result);
+    res.status(200).data(result);
     const chatMembers = await this.prisma.chatMember.findMany({
       where: { conversationId, status: MemberStatus.ACTIVE },
     });
@@ -255,7 +272,7 @@ export default class ChatController extends BaseController {
       },
     });
     await updateSearchAccent("conversation", cvs.id);
-    res.status(200).json(cvs);
+    res.status(200).data(cvs);
     const chatMembers = await this.prisma.chatMember.findMany({
       where: { conversationId, status: MemberStatus.ACTIVE },
     });
@@ -323,7 +340,7 @@ export default class ChatController extends BaseController {
       where: { userId: user.id, conversationId: conversation.id },
       data: { status: MemberStatus.REMOVED },
     });
-    res.status(200).json(chatMember);
+    res.status(200).data(chatMember);
     const chatMembers = await this.prisma.chatMember.findMany({
       where: { conversationId, status: MemberStatus.ACTIVE },
     });
@@ -382,7 +399,7 @@ export default class ChatController extends BaseController {
       where: { conversationId, userId: reqUser.id },
       data: { status: MemberStatus.REMOVED },
     });
-    res.status(200).json(chatMember);
+    res.status(200).data(chatMember);
     const chatMembers = await this.prisma.chatMember.findMany({
       where: { conversationId, status: MemberStatus.ACTIVE },
     });
@@ -416,18 +433,18 @@ export default class ChatController extends BaseController {
   createChat = async (req: KGBRequest, res: KGBResponse) => {
     const reqUser = req.user;
     const conversation = await createChat(req.body, reqUser, this.io);
-    return res.status(200).json(conversation);
+    return res.status(200).data(conversation);
   };
   getChats = async (req: KGBRequest, res: KGBResponse) => {
     const reqUser = req.user;
-    const limit = parseInt(req.query.limit as string) || 10;
-    const offset = parseInt(req.query.offset as string) || 0;
-    const chats = await this.prisma.conversation.findMany({
+    const limit = req.gp<number>("limit", limitDefault, Number);
+    const offset = req.gp<number>("offset", offsetDefault, Number);
+    let chats = await this.prisma.conversation.findMany({
       where: {
-        chatMembers: { some: { userId: reqUser.id } },
+        chatMembers: {
+          some: { userId: reqUser.id, status: MemberStatus.ACTIVE },
+        },
       },
-      take: limit,
-      skip: offset,
       include: {
         chatMembers: {
           include: {
@@ -436,28 +453,22 @@ export default class ChatController extends BaseController {
         },
       },
     });
+    const total = await Promise.all(
+      chats.filter(async (chat) => {
+        if (chat.courseId) {
+          const course = await this.prisma.course.findFirst({
+            where: { id: chat.courseId, status: CourseStatus.APPROVED },
+          });
+          if (!course) {
+            return false;
+          }
+        }
+        return true;
+      }),
+    );
+    chats = total.splice(offset, limit + offset);
     const _ = [] as any[];
     for (const chat of chats) {
-      if (chat.courseId) {
-        if (
-          !(await this.prisma.course.findFirst({
-            where: { id: chat.courseId, status: CourseStatus.APPROVED },
-          }))
-        ) {
-          continue;
-        }
-      }
-      if (
-        chat.chatMembers.find(
-          (_) => _.userId === reqUser.id && _.status === MemberStatus.PENDING,
-        )
-      ) {
-        _.push({
-          conversation: { ...chat, unreadMessages: 0 },
-          lastMessage: null,
-        });
-        continue;
-      }
       const unreadMessages = await this.prisma.chatMembersOnMessages.count({
         where: {
           chatMember: { conversationId: chat.id, userId: reqUser.id },
@@ -497,11 +508,13 @@ export default class ChatController extends BaseController {
         new Date(a.lastMessage.updatedAt).getTime()
       );
     });
-    return res.status(200).json([...hasLastMessageSorted, ...noLastMessage]);
+    return res
+      .status(200)
+      .data([...hasLastMessageSorted, ...noLastMessage], chats.length);
   };
   getChat = async (req: KGBRequest, res: KGBResponse) => {
-    const limit = parseInt(req.query.limit as string) || 10;
-    const offset = parseInt(req.query.offset as string) || 0;
+    const limit = req.gp<number>("limit", limitDefault, Number);
+    const offset = req.gp<number>("offset", offsetDefault, Number);
     const reqUser = req.user;
     const id = req.gp<string>("id", undefined, String);
     const chat = await this.prisma.conversation.findFirst({
@@ -549,9 +562,7 @@ export default class ChatController extends BaseController {
     const mgses = await this.prisma.message.findMany({
       where: { conversationId: chat.id },
     });
-    return res
-      .status(200)
-      .json({ chat, messages, remaining: mgses.length > offset + limit });
+    return res.status(200).data(messages, mgses.length, { chat });
   };
 
   uploadAttachments = async (req: KGBRequest, res: KGBResponse) => {
@@ -583,7 +594,7 @@ export default class ChatController extends BaseController {
       await updateSearchAccent("attachment", __.id);
       _.push(__);
     }
-    res.status(200).json(_);
+    res.status(200).data(_);
 
     // const { attachments: attachmentList } = req.files as {
     //   attachments: Express.Multer.File[]

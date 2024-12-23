@@ -1,5 +1,5 @@
 import { BaseController } from "../../abstractions/base.controller";
-import { KGBResponse } from "../../util/global";
+import { KGBResponse, limitDefault, offsetDefault } from "../../util/global";
 import NotFoundException from "../../exceptions/not-found";
 import { KGBAuth } from "../../configs/passport";
 import HttpException from "../../exceptions/http-exception";
@@ -128,7 +128,7 @@ export default class LessonController extends BaseController {
       });
       await updateSearchAccent("lesson", lesson.id);
       const newLesson = await getLesson(lesson.id, reqUser.id);
-      res.status(200).json(newLesson);
+      res.status(200).data(newLesson);
       await this.prisma.course.update({
         where: { id: courseId },
         data: {
@@ -181,7 +181,7 @@ export default class LessonController extends BaseController {
       });
       await updateSearchAccent("lesson", lesson.id);
       const newLesson = await getLesson(lesson.id, reqUser.id);
-      res.status(200).json(newLesson);
+      res.status(200).data(newLesson);
       await refreshCourse(courseId);
     } else {
       throw new HttpException(400, "Invalid lesson type");
@@ -202,12 +202,12 @@ export default class LessonController extends BaseController {
     ) {
       throw new HttpException(403, "Forbidden");
     }
-    return res.status(200).json(lesson);
+    return res.status(200).data(lesson);
   };
   getLessons = async (req: KGBRequest, res: KGBResponse) => {
     const reqUser = req.user;
-    const limit = Number(req.query.limit) || 12;
-    const offset = Number(req.query.offset) || 0;
+    const limit = req.gp<number>("limit", limitDefault, Number);
+    const offset = req.gp<number>("offset", offsetDefault, Number);
     const status = req.gp<LessonStatus>("status", null, LessonStatus);
     const { lessons, total } = await getLessons(
       reqUser.id,
@@ -215,7 +215,7 @@ export default class LessonController extends BaseController {
       offset,
       status,
     );
-    res.status(200).json({ lessons, total, page: offset / limit + 1 });
+    res.status(200).data(lessons, total);
   };
 
   updateLesson = async (req: KGBRequest, res: KGBResponse) => {
@@ -286,7 +286,7 @@ export default class LessonController extends BaseController {
       });
       const newLesson = await getLesson(id, reqUser.id);
       await updateSearchAccent("lesson", id);
-      return res.status(200).json(newLesson);
+      return res.status(200).data(newLesson);
     } else if (lesson.lessonType === LessonType.TEXT) {
       const { lessonNumber, partId, trialAllowed, title, content } = req.body;
       const lessonName = req.gp<string>(
@@ -332,7 +332,7 @@ export default class LessonController extends BaseController {
       const newLesson = await getLesson(id, reqUser.id);
 
       await updateSearchAccent("lesson", id);
-      return res.status(200).json(newLesson);
+      return res.status(200).data(newLesson);
     } else {
       throw new HttpException(400, "Invalid lesson type");
     }
@@ -345,7 +345,7 @@ export default class LessonController extends BaseController {
       throw new NotFoundException("lesson", id);
     }
     await deleteLesson(id);
-    return res.status(200).json(lesson);
+    return res.status(200).data(lesson);
   };
   approveLesson = async (req: KGBRequest, res: KGBResponse) => {
     const id = req.gp<string>("id", undefined, String);
@@ -368,13 +368,13 @@ export default class LessonController extends BaseController {
     });
     for (const lesson of lessons) {
       if (lesson.status !== LessonStatus.APPROVED) {
-        return res.status(200).json(lesson);
+        return res.status(200).data(lesson);
       }
     }
     await this.prisma.course.update({
       where: { id: lesson.part.courseId },
       data: { status: LessonStatus.APPROVED },
     });
-    return res.status(200).json(lessons);
+    return res.status(200).data(lessons);
   };
 }

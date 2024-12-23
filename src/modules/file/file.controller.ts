@@ -24,7 +24,7 @@ export default class FileController extends BaseController {
     );
   }
   uploadFile = async (req: KGBRequest, res: KGBResponse) => {
-    return res.json(req.fileModelsWithFieldName);
+    return res.data(req.fileModelsWithFieldName);
   };
   getFile = async (req: KGBRequest, res: KGBResponse) => {
     const fileId = req.gp<string>("id", undefined, String);
@@ -35,7 +35,7 @@ export default class FileController extends BaseController {
       const files = await this.prisma.file.findMany({
         where: { ownerId: req.user.id },
       });
-      return res.json(files);
+      return res.data(files);
     }
     let file = await this.prisma.file.findFirst({
       where: { id: fileId },

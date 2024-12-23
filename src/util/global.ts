@@ -48,6 +48,17 @@ export type ExtendPrisma = DynamicClientExtensionThis<
   {}
 >;
 
+export const limitDefault = 12;
+export const offsetDefault = 0;
+
+export const REDIS_HOST = process.env.REDIS_HOST;
+export const REDIS_PORT = parseInt(process.env.REDIS_PORT as string);
+
+export const QUEUE_NAMES = {
+  sendEmailCampaign: "sendEmailCampaign",
+  deactivateCampaign: "deactivateCampaign",
+};
+
 export type KGBSocket = Socket & AddonUserOnSocket;
 
 export const GLOBAL_REVENUE_SHARE = 0.7;
@@ -107,6 +118,7 @@ export type KGBRequest = Request & {
     defaultValue?: T,
     validate?: ((val: T) => T | undefined) | T[] | RegExp | object,
   ) => T | null;
+  genNextUrl: (data: any[]) => string;
 };
 
 export type fileModel = File;
@@ -123,7 +135,7 @@ export type KGBResponse = Response & {
    * @param {number} [option.code] The HTTP status code, defaults to 200.
    * @returns {Response} The response.
    */
-  success: (data: any, option?: { code?: number; meta?: any }) => KGBResponse;
+  data: (data: any, total?: number, option?: any) => KGBResponse;
   /**
    * Returns an error response with the given error message or object.
    *
@@ -131,7 +143,23 @@ export type KGBResponse = Response & {
    * @returns {void}
    */
   error: (error: string | Error) => void;
+  createResponse: (data: any, total?: number, option?: any) => ResponseData;
 };
+export type ResponseData =
+  | {
+      data: any[];
+      option?: any;
+      pagination: {
+        page: number;
+        totalPages: number;
+        total: number;
+        next: string;
+      };
+    }
+  | {
+      data: any;
+      option?: any;
+    };
 
 export type ConversationWithLastMessage = {
   conversation: Conversation & { unreadMessages: number };

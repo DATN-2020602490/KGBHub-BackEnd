@@ -1,5 +1,11 @@
 import { BaseController } from "../../abstractions/base.controller";
-import { File, KGBResponse, userSelector } from "../../util/global";
+import {
+  File,
+  KGBResponse,
+  limitDefault,
+  offsetDefault,
+  userSelector,
+} from "../../util/global";
 import { KGBAuth } from "../../configs/passport";
 import NotFoundException from "../../exceptions/not-found";
 import HttpException from "../../exceptions/http-exception";
@@ -104,7 +110,7 @@ export default class CourseController extends BaseController {
       },
     });
     const course = await getCourse(newCourse.id, reqUser.id);
-    res.status(200).json(course);
+    res.status(200).data(course);
     const conversation = await this.prisma.conversation.create({
       data: {
         avatarFileId: "0",
@@ -126,8 +132,8 @@ export default class CourseController extends BaseController {
 
   getCourses = async (req: KGBRequest, res: KGBResponse) => {
     const reqUser = req.user;
-    const limit = Number(req.query.limit) || 12;
-    const offset = Number(req.query.offset) || 0;
+    const limit = req.gp<number>("limit", limitDefault, Number);
+    const offset = req.gp<number>("offset", offsetDefault, Number);
     const search = req.gp<string>("search", null, checkBadWord);
     const orderBy = (req.query.orderBy as string) || "createdAt";
     const direction = (req.query.direction as "asc" | "desc") || "desc";
@@ -142,7 +148,7 @@ export default class CourseController extends BaseController {
       search,
       status,
     );
-    return res.status(200).json({ courses, total, page: offset / limit + 1 });
+    return res.status(200).data(courses, total);
   };
 
   getCourse = async (req: KGBRequest, res: KGBResponse) => {
@@ -156,7 +162,7 @@ export default class CourseController extends BaseController {
     if (!course) {
       throw new NotFoundException("course", id);
     }
-    return res.status(200).json(course);
+    return res.status(200).data(course);
   };
 
   updateCourse = async (req: KGBRequest, res: KGBResponse) => {
@@ -263,7 +269,7 @@ export default class CourseController extends BaseController {
       description: descriptionMD,
     });
     const newCourse = await getCourse(id, reqUser.id);
-    res.status(200).json(newCourse);
+    res.status(200).data(newCourse);
     await this.prisma.conversation.updateMany({
       where: { courseId: id },
       data: {
@@ -311,7 +317,9 @@ export default class CourseController extends BaseController {
 
     if (
       coursePaids.some(
-        (paid) => paid.isFree || paid.order.status === OrderStatus.SUCCESS,
+        (paid) =>
+          paid.isFree ||
+          (paid.order && paid.order.status === OrderStatus.SUCCESS),
       ) &&
       course.userId === reqUser.id &&
       !reqUser.roles.some((role) => role.role.name === RoleEnum.ADMIN)
@@ -320,7 +328,7 @@ export default class CourseController extends BaseController {
     }
 
     await deleteCourse(id);
-    return res.status(200).json(course);
+    return res.status(200).data(course);
   };
 
   createPart = async (req: KGBRequest, res: KGBResponse) => {
@@ -365,7 +373,7 @@ export default class CourseController extends BaseController {
       },
     });
     await refreshPart(courseId);
-    return res.status(200).json(part);
+    return res.status(200).data(part);
   };
 
   getParts = async (req: KGBRequest, res: KGBResponse) => {
@@ -380,7 +388,7 @@ export default class CourseController extends BaseController {
       where: { courseId },
       orderBy: { partNumber: "asc" },
     });
-    return res.status(200).json(parts);
+    return res.status(200).data(parts);
   };
 
   getPart = async (req: KGBRequest, res: KGBResponse) => {
@@ -408,7 +416,7 @@ export default class CourseController extends BaseController {
     if (!part) {
       throw new NotFoundException("part", partId);
     }
-    return res.status(200).json(part);
+    return res.status(200).data(part);
   };
 
   updatePart = async (req: KGBRequest, res: KGBResponse) => {
@@ -449,7 +457,7 @@ export default class CourseController extends BaseController {
       },
     });
     await refreshPart(courseId);
-    return res.status(200).json(part);
+    return res.status(200).data(part);
   };
 
   deletePart = async (req: KGBRequest, res: KGBResponse) => {
@@ -478,7 +486,7 @@ export default class CourseController extends BaseController {
     }
     await deletePart(partId);
     await refreshPart(courseId);
-    return res.status(200).json(part);
+    return res.status(200).data(part);
   };
 
   approveCourse = async (req: KGBRequest, res: KGBResponse) => {
@@ -526,6 +534,6 @@ export default class CourseController extends BaseController {
         },
       },
     });
-    return res.status(200).json(course);
+    return res.status(200).data(course);
   };
 }

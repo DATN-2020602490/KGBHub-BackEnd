@@ -565,4 +565,20 @@ migrate.add("remove_old_stripe_data", async () => {
   }
 });
 
+migrate.add("update_campaign_active", async () => {
+  const campaigns = await prisma.campaign.findMany({
+    where: {
+      active: true,
+    },
+  });
+  for (const campaign of campaigns) {
+    if (campaign.endAt < new Date()) {
+      await prisma.campaign.update({
+        where: { id: campaign.id },
+        data: { active: false },
+      });
+    }
+  }
+});
+
 export default migrate;

@@ -6,6 +6,8 @@ import {
   Course,
   KGBRequest,
   KGBResponse,
+  limitDefault,
+  offsetDefault,
   userSelector,
 } from "../../../util/global";
 import { removeAccent } from "../../../prisma/prisma.service";
@@ -20,8 +22,8 @@ export default class PublicCourseController extends BaseController {
   }
 
   getCourses = async (req: KGBRequest, res: KGBResponse) => {
-    const limit = Number(req.query.limit) || 12;
-    const offset = Number(req.query.offset) || 0;
+    const limit = req.gp<number>("limit", limitDefault, Number);
+    const offset = req.gp<number>("offset", offsetDefault, Number);
     const search = req.gp<string>("search", null, checkBadWord);
     const categories = req.query.categories || "";
     const orderBy = (req.query.orderBy as string) || "createdAt";
@@ -111,7 +113,14 @@ export default class PublicCourseController extends BaseController {
             where: {
               userId: req.user.id,
               courseId: course.id,
-              order: { status: OrderStatus.SUCCESS },
+              OR: [
+                {
+                  isFree: true,
+                },
+                {
+                  order: { status: OrderStatus.SUCCESS },
+                },
+              ],
             },
           }),
           this.prisma.lessonDone.findMany({
@@ -143,12 +152,9 @@ export default class PublicCourseController extends BaseController {
         course["myRating"] = rating;
       }
     }
-    return res.status(200).json({
-      courses: isBestSeller ? bestSellerCourses : courses,
-      total,
-      page: offset / limit + 1,
-      limit,
-    });
+    return res
+      .status(200)
+      .data(isBestSeller ? bestSellerCourses : courses, total);
   };
 
   getCourse = async (req: KGBRequest, res: KGBResponse) => {
@@ -177,7 +183,8 @@ export default class PublicCourseController extends BaseController {
       throw new NotFoundException("course", id);
     }
     course["totalBought"] = course.coursesPaid.filter(
-      (cp) => cp.order.status === OrderStatus.SUCCESS,
+      (cp) =>
+        (cp.order && cp.order.status === OrderStatus.SUCCESS) || cp.isFree,
     ).length;
 
     if (req.user) {
@@ -192,7 +199,14 @@ export default class PublicCourseController extends BaseController {
           where: {
             userId: req.user.id,
             courseId: course.id,
-            order: { status: OrderStatus.SUCCESS },
+            OR: [
+              {
+                isFree: true,
+              },
+              {
+                order: { status: OrderStatus.SUCCESS },
+              },
+            ],
           },
         }),
         this.prisma.lessonDone.findMany({
@@ -223,6 +237,6 @@ export default class PublicCourseController extends BaseController {
         : 0;
       course["myRating"] = rating;
     }
-    return res.status(200).json(course);
+    return res.status(200).data(course);
   };
 }

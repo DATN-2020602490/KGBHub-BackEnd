@@ -50,7 +50,7 @@ export default class ReportController extends BaseController {
       target: "system",
       systemReport: groupOrdersByDate(orders, groupBy),
     } as ReportTable;
-    return res.status(200).json(result);
+    return res.status(200).data(result);
   };
 
   getReportByAuthors = async (req: KGBRequest, res: KGBResponse) => {
@@ -89,6 +89,6 @@ export default class ReportController extends BaseController {
       author,
       authorReport: processOrdersReportAuthor(_, groupBy),
     } as ReportTable;
-    return res.status(200).json(result);
+    return res.status(200).data(result);
   };
 }

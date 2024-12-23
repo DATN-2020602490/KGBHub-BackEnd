@@ -1,7 +1,13 @@
 import { BaseController } from "../../abstractions/base.controller";
 import express from "express";
 import stripe from "../../configs/stripe";
-import { KGBRequest, KGBResponse, userSelector } from "../../util/global";
+import {
+  KGBRequest,
+  KGBResponse,
+  limitDefault,
+  offsetDefault,
+  userSelector,
+} from "../../util/global";
 import {
   bindingPriceForProductOrder,
   createLineItems,
@@ -51,7 +57,7 @@ export default class StripeController extends BaseController {
       console.error("paymentService.onStripeHook error", error);
     });
 
-    return res.status(200).json({ received: true });
+    return res.status(200).data({ received: true });
   };
 
   buyCourse = async (req: KGBRequest, res: KGBResponse) => {
@@ -102,6 +108,11 @@ export default class StripeController extends BaseController {
       process.env.PUBLIC_URL,
       String,
     );
+    if (line_items.length === 0) {
+      res.status(200).data({
+        checkoutUrl: success_url,
+      });
+    }
     const checkout = await stripe.checkout.sessions.create({
       line_items,
       mode: "payment",
@@ -133,7 +144,7 @@ export default class StripeController extends BaseController {
         order: { connect: { id: order.id } },
       },
     });
-    res.status(200).json(order);
+    res.status(200).data(order);
     await bindingPriceForProductOrder(order.id);
   };
 
@@ -205,13 +216,13 @@ export default class StripeController extends BaseController {
         },
       });
     }
-    res.status(200).json(order);
+    res.status(200).data(order);
     await bindingPriceForProductOrder(order.id);
   };
 
   getOrders = async (req: KGBRequest, res: KGBResponse) => {
-    const limit = req.gp<number>("limit", 12, Number);
-    const offset = req.gp<number>("offset", 0, Number);
+    const limit = req.gp<number>("limit", limitDefault, Number);
+    const offset = req.gp<number>("offset", offsetDefault, Number);
     const userId = req.gp<string>("userId", null, String);
     const where = {};
     if (userId) {
@@ -227,7 +238,8 @@ export default class StripeController extends BaseController {
     for (const order of orders) {
       order.amount = order.amount + order.platformFee + order.KGBHubServiceTip;
     }
-    return res.status(200).json(orders);
+    const total = await this.prisma.order.count({ where });
+    return res.status(200).data(orders, total);
   };
 
   getOrder = async (req: KGBRequest, res: KGBResponse) => {
@@ -253,6 +265,6 @@ export default class StripeController extends BaseController {
         po.product.type !== ProductType.STRIPE_SERVICE_FEE,
     );
     order.productOrders = [tipProduct, platformFeeProduct, ...elseProducts];
-    return res.status(200).json(order);
+    return res.status(200).data(order);
   };
 }

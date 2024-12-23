@@ -49,7 +49,7 @@ export default class AuthController extends BaseController {
         },
         true,
       );
-      return res.status(200).json({ accessToken });
+      return res.status(200).data({ accessToken });
     }
   };
 
@@ -198,9 +198,9 @@ export default class AuthController extends BaseController {
     if (accessToken.includes("ERROR")) {
       return res
         .status(403)
-        .json({ message: accessToken.replace("ERROR: ", "") });
+        .data({ message: accessToken.replace("ERROR: ", "") });
     }
-    return res.status(200).json({ accessToken, refreshToken });
+    return res.status(200).data({ accessToken, refreshToken });
   };
 
   login = async (req: KGBRequest, res: KGBResponse) => {
@@ -256,9 +256,9 @@ export default class AuthController extends BaseController {
       if (accessToken.includes("ERROR")) {
         return res
           .status(403)
-          .json({ message: accessToken.replace("ERROR: ", "") });
+          .data({ message: accessToken.replace("ERROR: ", "") });
       }
-      return res.status(200).json({
+      return res.status(200).data({
         accessToken,
         refreshToken,
         data,
@@ -303,9 +303,9 @@ export default class AuthController extends BaseController {
     if (accessToken.includes("ERROR")) {
       return res
         .status(403)
-        .json({ message: accessToken.replace("ERROR: ", "") });
+        .data({ message: accessToken.replace("ERROR: ", "") });
     }
-    res.json({ accessToken, newRefreshToken });
+    res.data({ accessToken, newRefreshToken });
   };
 
   logout = async (req: KGBRequest, res: KGBResponse) => {
@@ -318,6 +318,6 @@ export default class AuthController extends BaseController {
       },
     });
 
-    res.status(200).json({ message: "Logged out" });
+    res.status(200).data({ message: "Logged out" });
   };
 }

@@ -29,7 +29,7 @@ export default class PublicLessonController extends BaseController {
     lesson = await this.prisma.lesson.findFirst({
       where: { id },
     });
-    return res.status(200).json(lesson);
+    return res.status(200).data(lesson);
   };
 
   doneLessonAction = async (req: KGBRequest, res: KGBResponse) => {
@@ -46,7 +46,12 @@ export default class PublicLessonController extends BaseController {
       where: {
         courseId: lesson.part.courseId,
         userId: reqUser.id,
-        order: { status: OrderStatus.SUCCESS },
+        OR: [
+          {
+            isFree: true,
+          },
+          { order: { status: OrderStatus.SUCCESS } },
+        ],
       },
     });
     if (!paid) {
@@ -86,7 +91,7 @@ export default class PublicLessonController extends BaseController {
           },
         });
       }
-      return res.status(200).json(done);
+      return res.status(200).data(done);
     }
     await this.prisma.lessonDone.deleteMany({
       where: { lessonId, userId: reqUser.id },
@@ -94,6 +99,6 @@ export default class PublicLessonController extends BaseController {
     await this.prisma.courseDone.deleteMany({
       where: { courseId: lesson.part.courseId, userId: reqUser.id },
     });
-    return res.status(200).json(done);
+    return res.status(200).data(done);
   };
 }

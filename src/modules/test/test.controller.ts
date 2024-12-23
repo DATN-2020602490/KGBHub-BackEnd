@@ -33,10 +33,10 @@ export default class TestController extends BaseController {
         }),
       );
 
-      return res.status(200).json({ message: "All emails sent successfully" });
+      return res.status(200).data({ message: "All emails sent successfully" });
     } catch (error) {
       console.error("Error sending emails:", error);
-      return res.status(500).json({ message: "Error sending emails" });
+      return res.status(500).data({ message: "Error sending emails" });
     }
   };
 }
